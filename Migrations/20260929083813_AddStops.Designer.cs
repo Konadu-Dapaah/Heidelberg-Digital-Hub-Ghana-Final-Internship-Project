@@ -3,6 +3,7 @@ using System;
 using Commute360.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Commute360.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260929083813_AddStops")]
+    partial class AddStops
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -30,18 +33,8 @@ namespace Commute360.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("BoardingStopId")
-                        .HasColumnType("integer");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Days")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("DropOffStopId")
-                        .HasColumnType("integer");
 
                     b.Property<int>("RouteId")
                         .HasColumnType("integer");
@@ -54,10 +47,6 @@ namespace Commute360.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BoardingStopId");
-
-                    b.HasIndex("DropOffStopId");
 
                     b.HasIndex("RouteId");
 
@@ -155,18 +144,6 @@ namespace Commute360.Migrations
 
             modelBuilder.Entity("Commute360.Models.Booking", b =>
                 {
-                    b.HasOne("Commute360.Models.Stop", "BoardingStop")
-                        .WithMany()
-                        .HasForeignKey("BoardingStopId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Commute360.Models.Stop", "DropOffStop")
-                        .WithMany()
-                        .HasForeignKey("DropOffStopId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Commute360.Models.Route", "Route")
                         .WithMany("Bookings")
                         .HasForeignKey("RouteId")
@@ -178,10 +155,6 @@ namespace Commute360.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("BoardingStop");
-
-                    b.Navigation("DropOffStop");
 
                     b.Navigation("Route");
 

@@ -81,3 +81,13 @@ Difficulties Faced:
                   During setup, I encountered false-positive red syntax errors across my C# files. I identified that my editor was targeting the parent directory instead of the Commute360 project root where the .csproj file resides. Opening the project directly at its root folder allowed the language server to correctly recognize the dependencies and clear the highlights.
 
 Day 3
+
+Objectives: Let admin create a bus route and attach an ordered list of sorts to it and let anyone list routes back out with their stops.
+
+Tech Stack:
+         
+Accomplishment:
+               - Was able to work on 
+               1. Stop (Model)- stops on a route
+               2. Route (Model)- gained a stops collection
+               3. Routes endpoint - list routes, get routes and add stop

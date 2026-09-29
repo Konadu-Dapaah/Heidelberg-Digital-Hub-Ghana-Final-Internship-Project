@@ -8,6 +8,6 @@ public class User
     public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
     public string Role { get; set; } = "Staff"; 
-
+ //to show a staff can have mulitple bbokings
     public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 }
