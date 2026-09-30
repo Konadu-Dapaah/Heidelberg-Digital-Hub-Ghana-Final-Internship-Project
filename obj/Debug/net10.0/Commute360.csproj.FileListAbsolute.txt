@@ -135,3 +135,9 @@ C:\Users\AK$\Desktop\csharp_playground\dotnetDependencies\Commute360\bin\Debug\n
 C:\Users\AK$\Desktop\csharp_playground\dotnetDependencies\Commute360\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerGen.dll
 C:\Users\AK$\Desktop\csharp_playground\dotnetDependencies\Commute360\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerUI.dll
 C:\Users\AK$\Desktop\csharp_playground\dotnetDependencies\Commute360\obj\Debug\net10.0\Commute360.sourcelink.json
+C:\Users\AK$\Desktop\csharp_playground\dotnetDependencies\Commute360\bin\Debug\net10.0\Commute360.staticwebassets.runtime.json
+C:\Users\AK$\Desktop\csharp_playground\dotnetDependencies\Commute360\obj\Debug\net10.0\compressed\7wjtj0sbrg-{0}-1c0kh0uhel-1c0kh0uhel.gz
+C:\Users\AK$\Desktop\csharp_playground\dotnetDependencies\Commute360\obj\Debug\net10.0\compressed\yzz9dnq1vc-{0}-fb6axrgw04-fb6axrgw04.gz
+C:\Users\AK$\Desktop\csharp_playground\dotnetDependencies\Commute360\obj\Debug\net10.0\compressed\y0xd2aszts-{0}-ajnwff40is-ajnwff40is.gz
+C:\Users\AK$\Desktop\csharp_playground\dotnetDependencies\Commute360\obj\Debug\net10.0\compressed\ynrx5pdbp4-{0}-rqaqp5wvw8-rqaqp5wvw8.gz
+C:\Users\AK$\Desktop\csharp_playground\dotnetDependencies\Commute360\obj\Debug\net10.0\compressed\ybfqwud5a7-{0}-oqstr2znn0-oqstr2znn0.gz

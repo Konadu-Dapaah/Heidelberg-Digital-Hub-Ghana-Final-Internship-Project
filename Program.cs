@@ -6,8 +6,21 @@ using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using Commute360.Data;
 using Commute360.Services;
+using Commute360.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// 1. Add CORS policy to allow local frontend requests
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
@@ -16,14 +29,15 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddHealthChecks();
+builder.Services.AddSignalR();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        // Configure JWT token validation parameters, including issuer, audience, lifetime, and signing key. This ensures that incoming requests with JWT tokens are properly validated for authenticity and integrity.
+        // Configure JWT token validation parameters
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            // Validate the issuer of the token to ensure it matches the expected issuer. as well as the time it was issued
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
@@ -36,6 +50,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 var app = builder.Build();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -43,10 +58,20 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
+// 2. Serve static files from wwwroot (login.html, register.html, css)
+app.UseStaticFiles();
+
+// 3. Enable CORS middleware before Routing/Auth
+app.UseCors("AllowAll");
+
+app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
+// 4. Map endpoints
 app.MapControllers();
+app.MapHub<BusLocationHub>("/hubs/bus");
+app.MapHealthChecks("/health");
 
 app.Run();
