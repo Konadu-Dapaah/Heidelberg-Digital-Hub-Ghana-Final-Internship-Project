@@ -1,0 +1,211 @@
+/* Dashboard — extends auth.css tokens & routes.css chrome */
+
+.dash-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  flex: 1;
+  animation: riseIn 0.75s ease 0.1s both;
+}
+
+.booking-info {
+  border-radius: 22px;
+  background: linear-gradient(160deg, rgba(26, 45, 69, 0.72), rgba(10, 22, 40, 0.78));
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow);
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+.booking-info__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.booking-info__empty p {
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  max-width: 40ch;
+}
+
+.booking-info__grid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (min-width: 720px) {
+  .booking-info__grid {
+    grid-template-columns: 1.4fr 1fr;
+    align-items: end;
+  }
+}
+
+.booking-info__route .route-summary {
+  margin-bottom: 0;
+}
+
+.booking-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.booking-meta__row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.booking-meta__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fog);
+}
+
+.booking-meta__value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.booking-meta__value--accent {
+  color: var(--teal-bright);
+}
+
+.days-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.days-pills span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.6rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(45, 212, 191, 0.14);
+  border: 1px solid rgba(45, 212, 191, 0.28);
+  color: var(--teal-bright);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.map-panel {
+  border-radius: 22px;
+  background: linear-gradient(160deg, rgba(26, 45, 69, 0.72), rgba(10, 22, 40, 0.78));
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow);
+  padding: clamp(1rem, 2.5vw, 1.35rem);
+  animation: riseIn 0.85s ease 0.18s both;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+}
+
+.map-panel .panel-label {
+  margin-bottom: 0.85rem;
+}
+
+#map {
+  flex: 1;
+  min-height: 360px;
+  height: clamp(360px, 52vh, 560px);
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(197, 216, 224, 0.12);
+  background: rgba(10, 22, 40, 0.6);
+}
+
+/* Leaflet tweaks for dark chrome */
+.leaflet-container {
+  font-family: var(--font-body);
+  background: #0a1628;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #1a2d45;
+  color: var(--text);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.leaflet-popup-tip {
+  background: #1a2d45;
+}
+
+.leaflet-popup-content {
+  margin: 0.75rem 0.9rem;
+  font-weight: 600;
+}
+
+.leaflet-control-attribution {
+  background: rgba(10, 22, 40, 0.75) !important;
+  color: var(--text-muted) !important;
+  font-size: 0.65rem !important;
+}
+
+.leaflet-control-attribution a {
+  color: var(--teal-bright) !important;
+}
+
+.map-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 360px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 2rem;
+}
+
+.map-placeholder svg {
+  width: 48px;
+  height: 48px;
+  color: var(--teal-bright);
+  opacity: 0.55;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: rgba(52, 211, 153, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  color: var(--success);
+  width: fit-content;
+}
+
+.status-pill::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.25);
+  animation: pulseDot 1.8s ease-in-out infinite;
+}
+
+@keyframes pulseDot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(52, 211, 153, 0.08);
+  }
+}
