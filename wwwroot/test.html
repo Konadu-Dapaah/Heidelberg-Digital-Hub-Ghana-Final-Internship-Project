@@ -1,25 +1,35 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>SignalR Test</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SignalR Test — Commute360</title>
 </head>
 <body>
     <h2>Bus Location Test</h2>
+    <p>Bus ID: <span id="busId">-</span></p>
     <p>Latitude: <span id="lat">-</span></p>
     <p>Longitude: <span id="lng">-</span></p>
     <p id="alert" style="color: red; font-weight: bold;"></p>
     <button onclick="startSimulation()">Start Simulated Bus</button>
     <button onclick="stopSimulation()">Stop</button>
-
+    <script src="/nav.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script>
+        const token = localStorage.getItem("token");
+
         const connection = new signalR.HubConnectionBuilder()
-            .withUrl("/hubs/bus")
+            .withUrl("/hubs/bus", {
+                accessTokenFactory: () => token || ""
+            })
+            .withAutomaticReconnect()
             .build();
 
-        connection.on("ReceiveLocation", (lat, lng) => {
-            document.getElementById("lat").innerText = lat.toFixed(5);
-            document.getElementById("lng").innerText = lng.toFixed(5);
+        // Updated callback signature: Hub emits (busId, latitude, longitude)
+        connection.on("ReceiveLocation", (busId, lat, lng) => {
+            document.getElementById("busId").innerText = busId ?? "1";
+            document.getElementById("lat").innerText = typeof lat === "number" ? lat.toFixed(5) : lat;
+            document.getElementById("lng").innerText = typeof lng === "number" ? lng.toFixed(5) : lng;
         });
 
         connection.on("BusNearStop", (stopName, distance) => {
@@ -28,10 +38,13 @@
         });
 
         connection.start()
-            .then(() => connection.invoke("JoinRoute", "1"))
-            .catch(err => console.error(err));
+            .then(() => {
+                console.log("SignalR Connected.");
+                return connection.invoke("JoinRoute", "1");
+            })
+            .catch(err => console.error("SignalR connection error:", err));
 
-        // Replace these with your route's actual stop coordinates, in order
+        // Simulated stop coordinates along the corridor
         const path = [
             { lat: 5.6037, lng: -0.1870 },
             { lat: 5.6100, lng: -0.1800 },
@@ -49,7 +62,8 @@
             timer = setInterval(() => {
                 if (index >= path.length) index = 0;
                 const point = path[index];
-                connection.invoke("SendLocation", "1", point.lat, point.lng);
+                connection.invoke("SendLocation", "1", point.lat, point.lng)
+                    .catch(err => console.error("Error sending location:", err));
                 index++;
             }, 3000);
         }

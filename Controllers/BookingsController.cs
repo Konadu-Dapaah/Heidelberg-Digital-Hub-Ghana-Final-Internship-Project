@@ -3,73 +3,88 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Commute360.Data;
-using Commute360.DTOs;
 using Commute360.Models;
 
-namespace Commute360.Controllers;
-
-[ApiController]
-[Route("api/[controller]")]
-[Authorize]
-public class BookingsController : ControllerBase
+namespace Commute360.Controllers
 {
-    private readonly AppDbContext _context;
-
-    public BookingsController(AppDbContext context)
+    public class CreateBookingDto
     {
-        _context = context;
+        public int RouteId { get; set; }
+        public int BoardingStopId { get; set; }
+        public int DropOffStopId { get; set; }
+        public List<string> Days { get; set; } = new List<string>();
     }
 
-    private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-    [HttpPost]
-    public async Task<IActionResult> CreateBooking(CreateBookingDto dto)
+    [ApiController]
+    [Route("api/[controller]")]
+    [Authorize]
+    public class BookingsController : ControllerBase
     {
-        // 1. Prevent selecting the same stop for boarding and drop-off
-        if (dto.BoardingStopId == dto.DropOffStopId)
-            return BadRequest("Boarding and drop-off stops must be different.");
+        private readonly AppDbContext _context;
 
-        // 2. Fetch the route and its associated stops
-        var route = await _context.Routes
-            .Include(r => r.Stops)
-            .FirstOrDefaultAsync(r => r.Id == dto.RouteId);
-
-        if (route == null) 
-            return NotFound("Route not found.");
-
-        // 3. Validate that both stops belong to this route
-        bool boardingValid = route.Stops.Any(s => s.Id == dto.BoardingStopId);
-        bool dropOffValid = route.Stops.Any(s => s.Id == dto.DropOffStopId);
-
-        if (!boardingValid || !dropOffValid)
-            return BadRequest("Boarding or drop-off stop does not belong to this route.");
-
-        // 4. Create and persist the booking entity
-        var booking = new Booking
+        public BookingsController(AppDbContext context)
         {
-            UserId = CurrentUserId,
-            RouteId = dto.RouteId,
-            BoardingStopId = dto.BoardingStopId,
-            DropOffStopId = dto.DropOffStopId,
-            Days = dto.Days
-        };
+            _context = context;
+        }
 
-        _context.Bookings.Add(booking);
-        await _context.SaveChangesAsync();
+        [HttpPost]
+        public async Task<IActionResult> CreateBooking([FromBody] CreateBookingDto dto)
+        {
+            if (dto == null)
+            {
+                return BadRequest(new { Message = "Invalid request payload." });
+            }
 
-        return Ok(booking);
-    }
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
 
-    [HttpGet("mine")]
-    public async Task<IActionResult> GetMyBookings()
-    {
-        var bookings = await _context.Bookings
-            .Include(b => b.Route)
-            .Include(b => b.BoardingStop)
-            .Include(b => b.DropOffStop)
-            .Where(b => b.UserId == CurrentUserId)
-            .ToListAsync();
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
 
-        return Ok(bookings);
+            // Verify route existence and include stops
+            var route = await _context.Routes
+                .Include(r => r.Stops)
+                .FirstOrDefaultAsync(r => r.Id == dto.RouteId);
+
+            if (route == null)
+            {
+                return NotFound(new { Message = "Selected route was not found." });
+            }
+
+            // Validate stops exist on this specific route
+            var boardingStop = route.Stops.FirstOrDefault(s => s.Id == dto.BoardingStopId);
+            var dropOffStop = route.Stops.FirstOrDefault(s => s.Id == dto.DropOffStopId);
+
+            if (boardingStop == null || dropOffStop == null)
+            {
+                return BadRequest(new { Message = "Invalid boarding or drop-off stop selected for this route." });
+            }
+
+            if (dto.BoardingStopId == dto.DropOffStopId)
+            {
+                return BadRequest(new { Message = "Boarding and drop-off stops cannot be identical." });
+            }
+
+            // Create and persist the booking entry
+            var booking = new Booking
+            {
+                UserId = int.Parse(userId),
+                RouteId = dto.RouteId,
+                BoardingStopId = dto.BoardingStopId,
+                DropOffStopId = dto.DropOffStopId,
+                Days = dto.Days != null ? string.Join(",", dto.Days) : string.Empty,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Bookings.Add(booking);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { Message = "Booking confirmed successfully!", BookingId = booking.Id });
+        }
     }
 }

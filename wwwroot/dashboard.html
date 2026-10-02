@@ -13,6 +13,8 @@
   <link rel="stylesheet" href="/css/dashboard.css" />
 </head>
 <body>
+  <script src="/nav.js"></script>
+
   <div class="scene" aria-hidden="true">
     <div class="scene__grid"></div>
     <div class="scene__orb scene__orb--a"></div>
@@ -48,7 +50,7 @@
 
     <div class="page-header">
       <h1>Your dashboard</h1>
-      <p>Track your active booking and see every stop on the map.</p>
+      <p>Track your active booking and see your bus live on the map.</p>
     </div>
 
     <div class="dash-layout">
@@ -75,18 +77,18 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
   <script>
     const token = localStorage.getItem("token");
     if (!token) {
       window.location.href = "/login.html";
     }
 
-    const apiBase = window.location.port ? "" : "http://localhost:5291";
     const bookingInfoEl = document.getElementById("bookingInfo");
     const mapEl = document.getElementById("map");
     const mapPlaceholder = document.getElementById("mapPlaceholder");
 
-    let map, routeLine;
+    let map, routeLine, liveBusMarker, signalRConnection;
 
     function escapeHtml(str) {
       return String(str ?? "")
@@ -159,6 +161,7 @@
         map.remove();
         map = null;
         routeLine = null;
+        liveBusMarker = null;
       }
 
       map = L.map(mapEl).setView([5.6037, -0.1870], 13);
@@ -184,27 +187,83 @@
         if (isBoard) label = `${stop.name} (Boarding)`;
         if (isDrop) label = `${stop.name} (Drop-off)`;
 
-        const marker = L.marker([stop.latitude, stop.longitude]).addTo(map);
-        marker.bindPopup(label);
-        if (isBoard || isDrop) marker.openPopup();
+        // Parse coordinates defensively to float values
+        const lat = parseFloat(stop.latitude);
+        const lng = parseFloat(stop.longitude);
+
+        if (!isNaN(lat) && !isNaN(lng)) {
+          const marker = L.marker([lat, lng]).addTo(map);
+          marker.bindPopup(label);
+          if (isBoard || isDrop) marker.openPopup();
+        }
       });
 
-      const latlngs = sorted.map((s) => [s.latitude, s.longitude]);
-      routeLine = L.polyline(latlngs, {
-        color: "#2dd4bf",
-        weight: 4,
-        opacity: 0.9
-      }).addTo(map);
+      // Safely parse lat/lngs for route polyline
+      const latlngs = sorted
+        .map((s) => [parseFloat(s.latitude), parseFloat(s.longitude)])
+        .filter(([lat, lng]) => !isNaN(lat) && !isNaN(lng));
 
-      map.fitBounds(routeLine.getBounds(), { padding: [36, 36] });
+      if (latlngs.length > 0) {
+        routeLine = L.polyline(latlngs, {
+          color: "#2dd4bf",
+          weight: 4,
+          opacity: 0.9
+        }).addTo(map);
 
-      // Leaflet needs a resize after becoming visible
+        map.fitBounds(routeLine.getBounds(), { padding: [36, 36] });
+      }
+
       setTimeout(() => map.invalidateSize(), 80);
+    }
+
+    async function setupSignalR(routeId) {
+      if (!routeId) return;
+
+      const hubUrl = `/hubs/bus`;
+
+      signalRConnection = new signalR.HubConnectionBuilder()
+        .withUrl(hubUrl, {
+          accessTokenFactory: () => token
+        })
+        .withAutomaticReconnect()
+        .build();
+
+      signalRConnection.on("ReceiveLocation", (busId, latitude, longitude) => {
+        console.log(`Live Location Received -> Route: ${routeId}, Lat: ${latitude}, Lng: ${longitude}`);
+
+        const lat = parseFloat(latitude);
+        const lng = parseFloat(longitude);
+
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        if (liveBusMarker) {
+          liveBusMarker.setLatLng([lat, lng]);
+        } else {
+          const busIcon = L.divIcon({
+            className: 'live-bus-pin',
+            html: `<div style="background-color:#2dd4bf; width:16px; height:16px; border-radius:50%; border:3px solid #0a1628; box-shadow:0 0 10px #2dd4bf;"></div>`,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+          });
+          liveBusMarker = L.marker([lat, lng], { icon: busIcon })
+            .addTo(map)
+            .bindPopup("Live Bus");
+        }
+      });
+
+      try {
+        await signalRConnection.start();
+        console.log("SignalR Connected to Hub.");
+        await signalRConnection.invoke("JoinRoute", routeId.toString());
+      } catch (err) {
+        console.error("SignalR Connection Error: ", err);
+        setTimeout(() => setupSignalR(routeId), 5000);
+      }
     }
 
     async function loadDashboard() {
       try {
-        const res = await fetch(`${apiBase}/api/dashboard`, {
+        const res = await fetch(`/api/dashboard`, {
           headers: { Authorization: "Bearer " + token }
         });
 
@@ -228,6 +287,10 @@
             data.myBooking.boardingStopId,
             data.myBooking.dropOffStopId
           );
+
+          if (data.myBooking.route?.id) {
+            setupSignalR(data.myBooking.route.id);
+          }
         } else {
           renderEmpty();
         }

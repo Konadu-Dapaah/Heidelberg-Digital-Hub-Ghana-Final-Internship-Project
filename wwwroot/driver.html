@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Commute360 — Driver</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/auth.css" />
+  <link rel="stylesheet" href="/css/routes.css" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
+  <link rel="stylesheet" href="/css/driver.css" />
+</head>
+<body>
+  <div class="scene" aria-hidden="true">
+    <div class="scene__grid"></div>
+    <div class="scene__orb scene__orb--a"></div>
+    <div class="scene__orb scene__orb--b"></div>
+    <svg class="route-svg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
+      <path d="M-20 620 C 180 520, 260 680, 420 540 S 620 380, 780 460 S 980 620, 1220 380" />
+      <path d="M-40 280 C 160 360, 300 180, 480 260 S 720 420, 900 300 S 1080 160, 1240 220" opacity="0.45" />
+      <circle cx="420" cy="540" r="5" />
+      <circle cx="780" cy="460" r="5" style="animation-delay: 0.8s" />
+      <circle cx="900" cy="300" r="5" style="animation-delay: 1.4s" />
+    </svg>
+  </div>
+
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="topbar__brand" href="/dashboard.html">
+        <div class="brand-mark__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0a1628" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 16V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8" />
+            <path d="M4 12h16" />
+            <circle cx="7.5" cy="17.5" r="1.5" />
+            <circle cx="16.5" cy="17.5" r="1.5" />
+            <path d="M8 10h2M14 10h2" />
+          </svg>
+        </div>
+        <span class="topbar__name">Commute<span>360</span></span>
+      </a>
+      <div class="topbar__actions">
+        <a class="ghost-btn" href="/dashboard.html">Dashboard</a>
+        <button type="button" class="ghost-btn" id="logoutBtn">Sign out</button>
+      </div>
+    </header>
+
+    <div class="page-header">
+      <h1>Driver view</h1>
+      <p>Choose your route and broadcast live GPS so riders can track the bus.</p>
+    </div>
+
+    <section class="driver-panel">
+      <p class="panel-label">Live tracking</p>
+
+      <div class="field">
+        <label for="routeSelect">Route</label>
+        <select id="routeSelect" required>
+          <option value="" disabled selected>Loading routes…</option>
+        </select>
+      </div>
+
+      <div class="driver-actions">
+        <button type="button" class="btn" id="startBtn" onclick="startTracking()">
+          <span class="btn__spinner" aria-hidden="true"></span>
+          <span class="btn__label">Start tracking</span>
+        </button>
+        <button type="button" class="btn btn--danger" id="stopBtn" onclick="stopTracking()" disabled>
+          <span class="btn__label">Stop</span>
+        </button>
+      </div>
+
+      <div class="tracking-status is-idle" id="statusBox" role="status" aria-live="polite">
+        <span class="tracking-status__label">Status</span>
+        <span class="tracking-status__value" id="status">Idle — select a route to begin.</span>
+      </div>
+    </section>
+  </div>
+  <script src="/nav.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+  <script>
+    const token = localStorage.getItem("token");
+    if (!token) {
+      window.location.href = "/login.html";
+    }
+
+    // Relative pathing for Caddy reverse proxy
+    const apiBase = ""; 
+    let watchId = null;
+    let wakeLock = null;
+    let tracking = false;
+
+    const statusBox = document.getElementById("statusBox");
+    const statusEl = document.getElementById("status");
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const routeSelect = document.getElementById("routeSelect");
+
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl(`/hubs/bus`, { accessTokenFactory: () => token })
+      .withAutomaticReconnect()
+      .build();
+
+    connection.start().catch((err) => {
+      console.error(err);
+      setStatus("Could not connect to live hub.", "error");
+    });
+
+    function setStatus(text, state) {
+      statusEl.textContent = text;
+      statusBox.className = "tracking-status" + (state ? ` is-${state}` : "");
+    }
+
+    function setTrackingUi(isTracking) {
+      tracking = isTracking;
+      startBtn.disabled = isTracking;
+      stopBtn.disabled = !isTracking;
+      routeSelect.disabled = isTracking;
+      if (isTracking) {
+        startBtn.classList.add("is-loading");
+      } else {
+        startBtn.classList.remove("is-loading");
+      }
+    }
+
+    async function loadRoutes() {
+      try {
+        const res = await fetch(`/api/routes`, {
+          headers: { Authorization: "Bearer " + token }
+        });
+
+        if (res.status === 401) {
+          localStorage.removeItem("token");
+          window.location.href = "/login.html";
+          return;
+        }
+
+        if (!res.ok) {
+          routeSelect.innerHTML = `<option value="" disabled selected>Couldn’t load routes</option>`;
+          setStatus(`Failed to load routes (${res.status}).`, "error");
+          return;
+        }
+
+        const routes = await res.json();
+        routeSelect.innerHTML = "";
+
+        if (!routes.length) {
+          routeSelect.add(new Option("No routes available", "", true, true));
+          routeSelect.options[0].disabled = true;
+          setStatus("No routes found.", "error");
+          return;
+        }
+
+        routeSelect.add(new Option("Select a route…", "", true, true));
+        routeSelect.options[0].disabled = true;
+        routes.forEach((r) => {
+          routeSelect.add(new Option(`${r.origin} → ${r.destination}`, r.id));
+        });
+        setStatus("Idle — select a route to begin.", "idle");
+      } catch (err) {
+        console.error(err);
+        routeSelect.innerHTML = `<option value="" disabled selected>Connection error</option>`;
+        setStatus("Could not connect. Ensure the API is running.", "error");
+      }
+    }
+
+    async function startTracking() {
+      const routeId = routeSelect.value;
+      if (!routeId) {
+        setStatus("Please select a route first.", "error");
+        return;
+      }
+
+      if (!navigator.geolocation) {
+        setStatus("Geolocation is not supported on this device.", "error");
+        return;
+      }
+
+      try {
+        if (connection.state !== signalR.HubConnectionState.Connected) {
+          await connection.start();
+        }
+        await connection.invoke("JoinRoute", routeId);
+      } catch (err) {
+        console.error(err);
+        setStatus("Could not join route hub.", "error");
+        return;
+      }
+
+      if ("wakeLock" in navigator) {
+        try {
+          wakeLock = await navigator.wakeLock.request("screen");
+        } catch (err) {
+          console.warn("Wake Lock unavailable:", err);
+        }
+      }
+
+      setTrackingUi(true);
+      setStatus("Waiting for GPS…", "live");
+
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          connection.invoke("SendLocation", routeId, latitude, longitude).catch(console.error);
+          startBtn.classList.remove("is-loading");
+          setStatus(`Sending: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`, "live");
+        },
+        (error) => {
+          setStatus("GPS error: " + error.message, "error");
+          setTrackingUi(false);
+        },
+        { enableHighAccuracy: true }
+      );
+    }
+
+    function stopTracking() {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+      if (wakeLock) {
+        wakeLock.release().catch(() => {});
+        wakeLock = null;
+      }
+      setTrackingUi(false);
+      setStatus("Stopped.", "idle");
+    }
+
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      stopTracking();
+      localStorage.removeItem("token");
+      window.location.href = "/login.html";
+    });
+
+    document.addEventListener("visibilitychange", async () => {
+      if (tracking && document.visibilityState === "visible" && "wakeLock" in navigator) {
+        try {
+          wakeLock = await navigator.wakeLock.request("screen");
+        } catch (_) {}
+      }
+    });
+
+    loadRoutes();
+  </script>
+</body>
+</html>

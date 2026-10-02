@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16
+    container_name: commute360-db-1
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: Commute360
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: AKJoJoNaaNaVictor2cT&*wht1@
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: commute360-api-1
+    restart: unless-stopped
+    ports:
+      - "5291:80"
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=52.4.152.2;Port=5432;Database=Commute360;Username=postgres;Password=2cT&$wht1
+      - JWT_KEY=amaandjojoaresiblignswhowillmake
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

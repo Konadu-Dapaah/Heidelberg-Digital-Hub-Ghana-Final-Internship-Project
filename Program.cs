@@ -1,5 +1,5 @@
-//imports entity framework core tools
 using System.Text;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -10,7 +10,7 @@ using Commute360.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Add CORS policy to allow local frontend requests
+// 1. Add CORS policy
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -21,8 +21,13 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Add services to the container.
-builder.Services.AddControllers();
+// 2. Add controllers and configure JSON serializer to ignore circular reference loops
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    });
+
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -32,10 +37,10 @@ builder.Services.AddScoped<TokenService>();
 builder.Services.AddHealthChecks();
 builder.Services.AddSignalR();
 
+// 3. Configure JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        // Configure JWT token validation parameters
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -51,17 +56,30 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// 4. Safe Database Migration with Error Logging
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var db = services.GetRequiredService<AppDbContext>();
+        db.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while migrating the PostgreSQL database.");
+    }
+}
+
+// 5. Configure HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
 }
 
-// 2. Serve static files from wwwroot (login.html, register.html, css)
 app.UseStaticFiles();
-
-// 3. Enable CORS middleware before Routing/Auth
 app.UseCors("AllowAll");
 
 app.UseRouting();
@@ -69,7 +87,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// 4. Map endpoints
+// 6. Map Endpoints
 app.MapControllers();
 app.MapHub<BusLocationHub>("/hubs/bus");
 app.MapHealthChecks("/health");

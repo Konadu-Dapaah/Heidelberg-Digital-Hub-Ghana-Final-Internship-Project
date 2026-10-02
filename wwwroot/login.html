@@ -3,13 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Commute360 — Login</title>
+  <title>Commute360 — Register</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/auth.css" />
 </head>
 <body>
+  <script src="/nav.js"></script>
+
   <div class="scene" aria-hidden="true">
     <div class="scene__grid"></div>
     <div class="scene__orb scene__orb--a"></div>
@@ -47,10 +49,17 @@
 
     <section class="form-panel">
       <div class="auth-box">
-        <h2 class="auth-box__title">Welcome back</h2>
-        <p class="auth-box__subtitle">Sign in to pick up where your route left off.</p>
+        <h2 class="auth-box__title">Create your account</h2>
+        <p class="auth-box__subtitle">Join Commute360 to book routes or track as a driver.</p>
 
-        <form id="loginForm" novalidate>
+        <form id="registerForm" novalidate>
+          <div class="field">
+            <label for="name">Full name</label>
+            <div class="field__control">
+              <input type="text" id="name" name="name" placeholder="John Doe" autocomplete="name" required />
+            </div>
+          </div>
+
           <div class="field">
             <label for="email">Email</label>
             <div class="field__control">
@@ -61,7 +70,7 @@
           <div class="field">
             <label for="password">Password</label>
             <div class="field__control">
-              <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required />
+              <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="new-password" required />
               <button type="button" class="field__toggle" id="togglePassword" aria-label="Show password">
                 <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
@@ -71,17 +80,27 @@
             </div>
           </div>
 
+          <div class="field">
+            <label for="role">Register as</label>
+            <div class="field__control">
+              <select id="role" name="role" required>
+                <option value="Staff">Staff</option>
+                <option value="Driver">Driver</option>
+              </select>
+            </div>
+          </div>
+
           <button type="submit" class="btn" id="submitBtn">
             <span class="btn__spinner" aria-hidden="true"></span>
-            <span class="btn__label">Login</span>
+            <span class="btn__label">Register</span>
           </button>
         </form>
 
         <p id="message" class="message" role="status" aria-live="polite"></p>
 
         <p class="switch">
-          New here?
-          <a href="/register.html">Create an account</a>
+          Already have an account?
+          <a href="/login.html">Sign in</a>
         </p>
       </div>
     </section>
@@ -114,14 +133,16 @@
       }
     }
 
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    document.getElementById("registerForm").addEventListener("submit", async (e) => {
       e.preventDefault();
 
+      const name = document.getElementById("name").value.trim();
       const email = document.getElementById("email").value.trim();
       const password = passwordInput.value;
+      const role = document.getElementById("role").value;
 
-      if (!email || !password) {
-        setMessage("Please fill in both fields.", "error");
+      if (!name || !email || !password) {
+        setMessage("Please fill in all fields.", "error");
         return;
       }
 
@@ -129,24 +150,23 @@
       submitBtn.classList.add("is-loading");
       setMessage("");
 
-      const apiUrl = window.location.port ? "/api/auth/login" : "http://localhost:5291/api/auth/login";
+      // Relative path for Caddy reverse proxy
+      const apiUrl = "/api/auth/register";
 
       try {
         const response = await fetch(apiUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password })
+          body: JSON.stringify({ name, email, password, role })
         });
 
         if (response.ok) {
-          const data = await response.json();
-          localStorage.setItem("token", data.token);
-          setMessage("Login successful! Redirecting…", "success");
+          setMessage("Registration successful! Redirecting to login…", "success");
           setTimeout(() => {
-            window.location.href = "/routes.html";
-          }, 800);
+            window.location.href = "/login.html";
+          }, 900);
         } else {
-          let errorMessage = "Login failed.";
+          let errorMessage = "Registration failed.";
           const contentType = response.headers.get("content-type");
 
           if (contentType && contentType.includes("application/json")) {
@@ -160,7 +180,7 @@
         }
       } catch (err) {
         console.error("Fetch error details:", err);
-        setMessage("Could not connect. Ensure 'dotnet run' is active.", "error");
+        setMessage("Could not connect. Please try again.", "error");
       } finally {
         submitBtn.disabled = false;
         submitBtn.classList.remove("is-loading");

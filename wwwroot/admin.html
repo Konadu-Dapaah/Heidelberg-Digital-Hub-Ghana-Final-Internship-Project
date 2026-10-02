@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Commute360 — Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/auth.css" />
+  <link rel="stylesheet" href="/css/routes.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body>
+  <div class="scene" aria-hidden="true">
+    <div class="scene__grid"></div>
+    <div class="scene__orb scene__orb--a"></div>
+    <div class="scene__orb scene__orb--b"></div>
+    <svg class="route-svg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
+      <path d="M-20 620 C 180 520, 260 680, 420 540 S 620 380, 780 460 S 980 620, 1220 380" />
+      <path d="M-40 280 C 160 360, 300 180, 480 260 S 720 420, 900 300 S 1080 160, 1240 220" opacity="0.45" />
+      <circle cx="420" cy="540" r="5" />
+      <circle cx="780" cy="460" r="5" style="animation-delay: 0.8s" />
+      <circle cx="900" cy="300" r="5" style="animation-delay: 1.4s" />
+    </svg>
+  </div>
+
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="topbar__brand" href="/dashboard.html">
+        <div class="brand-mark__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0a1628" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 16V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8" />
+            <path d="M4 12h16" />
+            <circle cx="7.5" cy="17.5" r="1.5" />
+            <circle cx="16.5" cy="17.5" r="1.5" />
+            <path d="M8 10h2M14 10h2" />
+          </svg>
+        </div>
+        <span class="topbar__name">Commute<span>360</span></span>
+      </a>
+      <div class="topbar__actions">
+        <a class="ghost-btn" href="/dashboard.html">Dashboard</a>
+        <a class="ghost-btn" href="/routes.html">Routes</a>
+        <button type="button" class="ghost-btn" id="logoutBtn">Sign out</button>
+      </div>
+    </header>
+
+    <div class="page-header">
+      <h1>Admin</h1>
+      <p>Create routes and pin stops so riders can book and track their commute.</p>
+    </div>
+
+    <div class="admin-layout">
+      <section class="admin-panel">
+        <p class="panel-label">Create route</p>
+        <form id="routeForm" novalidate>
+          <div class="admin-fields-row">
+            <div class="field">
+              <label for="origin">Origin</label>
+              <div class="field__control">
+                <input type="text" id="origin" placeholder="e.g. Accra Central" required />
+              </div>
+            </div>
+            <div class="field">
+              <label for="destination">Destination</label>
+              <div class="field__control">
+                <input type="text" id="destination" placeholder="e.g. Tema" required />
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-fields-row">
+            <div class="field">
+              <label for="scheduleTime">Schedule time</label>
+              <div class="field__control">
+                <input type="datetime-local" id="scheduleTime" required />
+              </div>
+            </div>
+            <div class="field">
+              <label for="capacity">Capacity</label>
+              <div class="field__control">
+                <input type="number" id="capacity" min="1" placeholder="e.g. 40" required />
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn" id="routeBtn">
+            <span class="btn__spinner" aria-hidden="true"></span>
+            <span class="btn__label">Create route</span>
+          </button>
+        </form>
+        <p id="routeMsg" class="message" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="admin-panel">
+        <p class="panel-label">Add stop</p>
+        <form id="stopForm" novalidate>
+          <div class="admin-fields-row">
+            <div class="field">
+              <label for="routeId">Route ID</label>
+              <div class="field__control">
+                <input type="number" id="routeId" min="1" placeholder="From create route" required />
+              </div>
+            </div>
+            <div class="field">
+              <label for="stopName">Stop name</label>
+              <div class="field__control">
+                <input type="text" id="stopName" placeholder="e.g. Kaneshie" required />
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-fields-row">
+            <div class="field">
+              <label for="lat">Latitude</label>
+              <div class="field__control">
+                <input type="number" id="lat" step="any" placeholder="5.6037" required />
+              </div>
+            </div>
+            <div class="field">
+              <label for="lng">Longitude</label>
+              <div class="field__control">
+                <input type="number" id="lng" step="any" placeholder="-0.1870" required />
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="order">Order</label>
+            <div class="field__control">
+              <input type="number" id="order" min="0" placeholder="0" required />
+            </div>
+          </div>
+
+<h2>Existing Routes</h2>
+<div id="routeList"></div>
+
+<script>
+async function loadRouteList() {
+    const res = await fetch("/api/routes", { headers: { "Authorization": "Bearer " + token } });
+    const routes = await res.json();
+    const container = document.getElementById("routeList");
+    container.innerHTML = "";
+    routes.forEach(r => {
+        const div = document.createElement("div");
+        div.innerHTML = `${r.origin} → ${r.destination} (ID: ${r.id})
+            <button onclick="deleteRoute(${r.id})">Delete</button>`;
+        container.appendChild(div);
+    });
+}
+
+async function deleteRoute(id) {
+    if (!confirm("Delete this route?")) return;
+    const res = await fetch(`/api/routes/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": "Bearer " + token }
+    });
+    if (res.ok) loadRouteList();
+}
+
+loadRouteList();
+</script>
+<script>
+async function loadRouteList() {
+    const res = await fetch("/api/routes", { headers: { "Authorization": "Bearer " + token } });
+    const routes = await res.json();
+    const container = document.getElementById("routeList");
+    container.innerHTML = "";
+    routes.forEach(r => {
+        const div = document.createElement("div");
+        div.innerHTML = `${r.origin} → ${r.destination} (ID: ${r.id})
+            <button onclick="deleteRoute(${r.id})">Delete</button>`;
+        container.appendChild(div);
+    });
+}
+
+async function deleteRoute(id) {
+    if (!confirm("Delete this route?")) return;
+    const res = await fetch(`/api/routes/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": "Bearer " + token }
+    });
+    if (res.ok) loadRouteList();
+}
+
+loadRouteList();
+</script>
+          <button type="submit" class="btn" id="stopBtn">
+            <span class="btn__spinner" aria-hidden="true"></span>
+            <span class="btn__label">Add stop</span>
+          </button>
+        </form>
+        <p id="stopMsg" class="message" role="status" aria-live="polite"></p>
+      </section>
+    </div>
+  </div>
+  <script src="/nav.js"></script>
+  <script>
+    const token = localStorage.getItem("token");
+    if (!token) {
+      window.location.href = "/login.html";
+    }
+
+    function setMessage(el, text, type) {
+      el.textContent = text;
+      el.className = "message" + (type ? ` is-${type}` : "");
+      if (type === "error") {
+        el.style.animation = "none";
+        void el.offsetWidth;
+        el.style.animation = "";
+      }
+    }
+
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.removeItem("token");
+      window.location.href = "/login.html";
+    });
+
+    document.getElementById("routeForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const origin = document.getElementById("origin").value.trim();
+      const destination = document.getElementById("destination").value.trim();
+      const scheduleTimeInput = document.getElementById("scheduleTime").value;
+      const capacity = parseInt(document.getElementById("capacity").value, 10);
+      const routeBtn = document.getElementById("routeBtn");
+      const routeMsg = document.getElementById("routeMsg");
+
+      if (!origin || !destination || !scheduleTimeInput || !capacity) {
+        setMessage(routeMsg, "Please fill in all route fields.", "error");
+        return;
+      }
+
+      // Format date input to ISO 8601 string for System.Text.Json parsing
+      const scheduleTime = new Date(scheduleTimeInput).toISOString();
+
+      routeBtn.disabled = true;
+      routeBtn.classList.add("is-loading");
+      setMessage(routeMsg, "");
+
+      try {
+        const res = await fetch("/api/routes", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + token
+          },
+          body: JSON.stringify({ origin, destination, scheduleTime, capacity })
+        });
+
+        if (res.status === 401) {
+          localStorage.removeItem("token");
+          window.location.href = "/login.html";
+          return;
+        }
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok) {
+          setMessage(routeMsg, `Created route ID: ${data.id}`, "success");
+          document.getElementById("routeId").value = data.id;
+
+          // Clear inputs without resetting routeId
+          document.getElementById("origin").value = "";
+          document.getElementById("destination").value = "";
+          document.getElementById("scheduleTime").value = "";
+          document.getElementById("capacity").value = "";
+        } else {
+          setMessage(routeMsg, "Failed: " + JSON.stringify(data.errors || data), "error");
+        }
+      } catch (err) {
+        console.error(err);
+        setMessage(routeMsg, "Could not connect. Ensure the API is running.", "error");
+      } finally {
+        routeBtn.disabled = false;
+        routeBtn.classList.remove("is-loading");
+      }
+    });
+
+    document.getElementById("stopForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const routeId = document.getElementById("routeId").value;
+      const name = document.getElementById("stopName").value.trim();
+      const latitude = parseFloat(document.getElementById("lat").value);
+      const longitude = parseFloat(document.getElementById("lng").value);
+      const order = parseInt(document.getElementById("order").value, 10);
+      const stopBtn = document.getElementById("stopBtn");
+      const stopMsg = document.getElementById("stopMsg");
+
+      if (!routeId || !name || Number.isNaN(latitude) || Number.isNaN(longitude) || Number.isNaN(order)) {
+        setMessage(stopMsg, "Please fill in all stop fields.", "error");
+        return;
+      }
+
+      stopBtn.disabled = true;
+      stopBtn.classList.add("is-loading");
+      setMessage(stopMsg, "");
+
+      try {
+        const res = await fetch(`/api/routes/${routeId}/stops`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + token
+          },
+          body: JSON.stringify({ name, latitude, longitude, order })
+        });
+
+        if (res.status === 401) {
+          localStorage.removeItem("token");
+          window.location.href = "/login.html";
+          return;
+        }
+
+        if (res.ok) {
+          setMessage(stopMsg, "Stop added!", "success");
+          document.getElementById("stopName").value = "";
+          document.getElementById("lat").value = "";
+          document.getElementById("lng").value = "";
+          document.getElementById("order").value = "";
+        } else {
+          const data = await res.json().catch(() => ({}));
+          setMessage(stopMsg, "Failed: " + JSON.stringify(data.errors || data), "error");
+        }
+      } catch (err) {
+        console.error(err);
+        setMessage(stopMsg, "Could not connect. Ensure the API is running.", "error");
+      } finally {
+        stopBtn.disabled = false;
+        stopBtn.classList.remove("is-loading");
+      }
+    });
+  </script>
+</body>
+</html>

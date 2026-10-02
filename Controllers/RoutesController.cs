@@ -84,4 +84,20 @@ public class RoutesController : ControllerBase
 
         return Ok(stop);
     }
+    [Authorize(Roles = "Admin")]
+[HttpDelete("{id}")]
+public async Task<IActionResult> DeleteRoute(int id)
+{
+    var route = await _context.Routes
+        .Include(r => r.Stops)
+        .FirstOrDefaultAsync(r => r.Id == id);
+
+    if (route == null) return NotFound();
+
+    _context.Stops.RemoveRange(route.Stops);
+    _context.Routes.Remove(route);
+    await _context.SaveChangesAsync();
+
+    return Ok(new { message = "Route deleted." });
+}
 }
