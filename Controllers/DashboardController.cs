@@ -30,15 +30,12 @@ public class DashboardController : ControllerBase
 
         var myBooking = await _context.Bookings
             .Include(b => b.Route)
-                .ThenInclude(r => r!.Stops.OrderBy(s => s.Order))
             .Include(b => b.BoardingStop)
             .Include(b => b.DropOffStop)
-            .FirstOrDefaultAsync(b => b.UserId == CurrentUserId && b.Status == "Confirmed");
+            .Where(b => b.UserId == CurrentUserId && b.Status == "Confirmed")
+            .OrderByDescending(b => b.CreatedAt)
+            .FirstOrDefaultAsync();
 
-        return Ok(new
-        {
-            routes,
-            myBooking
-        });
+        return Ok(new { routes, myBooking });
     }
 }

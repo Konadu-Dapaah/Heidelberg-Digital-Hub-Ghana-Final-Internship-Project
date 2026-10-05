@@ -3,89 +3,86 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Commute360.Data;
+using Commute360.DTOs;
 using Commute360.Models;
 
-namespace Commute360.Controllers
+namespace Commute360.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize]
+public class BookingsController : ControllerBase
 {
-    public class CreateBookingDto
+    private readonly AppDbContext _context;
+
+    public BookingsController(AppDbContext context)
     {
-        public int RouteId { get; set; }
-        public int BoardingStopId { get; set; }
-        public int DropOffStopId { get; set; }
-        public List<string> Days { get; set; } = new List<string>();
+        _context = context;
     }
 
-    [ApiController]
-    [Route("api/[controller]")]
-    [Authorize]
-    public class BookingsController : ControllerBase
+    private int CurrentUserId =>
+        int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+    [HttpPost]
+    public async Task<IActionResult> CreateBooking(CreateBookingDto dto)
     {
-        private readonly AppDbContext _context;
+        var route = await _context.Routes
+            .Include(r => r.Stops)
+            .FirstOrDefaultAsync(r => r.Id == dto.RouteId);
 
-        public BookingsController(AppDbContext context)
+        if (route == null) return NotFound("Route not found.");
+
+        bool boardingValid = route.Stops.Any(s => s.Id == dto.BoardingStopId);
+        bool dropOffValid = route.Stops.Any(s => s.Id == dto.DropOffStopId);
+        if (!boardingValid || !dropOffValid)
+            return BadRequest("Boarding or drop-off stop does not belong to this route.");
+
+        if (dto.BoardingStopId == dto.DropOffStopId)
+            return BadRequest("Boarding and drop-off stops must be different.");
+
+        // Seat capacity check
+        int confirmedCount = await _context.Bookings
+            .CountAsync(b => b.RouteId == dto.RouteId && b.Status == "Confirmed");
+
+        if (confirmedCount >= route.Capacity)
+            return BadRequest("This route is fully booked.");
+
+        // A user has only one active booking at a time — replace any existing one
+        var existingBookings = await _context.Bookings
+            .Where(b => b.UserId == CurrentUserId && b.Status == "Confirmed")
+            .ToListAsync();
+
+        foreach (var existing in existingBookings)
         {
-            _context = context;
+            existing.Status = "Cancelled";
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CreateBooking([FromBody] CreateBookingDto dto)
+        var booking = new Booking
         {
-            if (dto == null)
-            {
-                return BadRequest(new { Message = "Invalid or missing payload." });
-            }
+            UserId = CurrentUserId,
+            RouteId = dto.RouteId,
+            BoardingStopId = dto.BoardingStopId,
+            DropOffStopId = dto.DropOffStopId,
+            Days = string.Join(",", dto.Days)
+        };
 
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+        _context.Bookings.Add(booking);
+        await _context.SaveChangesAsync();
 
-            // Extract user ID from token safely
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-            {
-                return Unauthorized(new { Message = "Invalid or expired token." });
-            }
+        return Ok(booking);
+    }
 
-            // Verify route existence and include stops
-            var route = await _context.Routes
-                .Include(r => r.Stops)
-                .FirstOrDefaultAsync(r => r.Id == dto.RouteId);
+    [HttpGet("mine")]
+    public async Task<IActionResult> GetMyBookings()
+    {
+        var bookings = await _context.Bookings
+            .Include(b => b.Route)
+            .Include(b => b.BoardingStop)
+            .Include(b => b.DropOffStop)
+            .Where(b => b.UserId == CurrentUserId)
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
 
-            if (route == null)
-            {
-                return NotFound(new { Message = "Selected route was not found." });
-            }
-
-            // Validate stops exist on this specific route
-            var boardingStop = route.Stops.FirstOrDefault(s => s.Id == dto.BoardingStopId);
-            var dropOffStop = route.Stops.FirstOrDefault(s => s.Id == dto.DropOffStopId);
-
-            if (boardingStop == null || dropOffStop == null)
-            {
-                return BadRequest(new { Message = "Invalid boarding or drop-off stop selected for this route." });
-            }
-
-            if (dto.BoardingStopId == dto.DropOffStopId)
-            {
-                return BadRequest(new { Message = "Boarding and drop-off stops cannot be identical." });
-            }
-
-            // Create and save booking
-            var booking = new Booking
-            {
-                UserId = userId,
-                RouteId = dto.RouteId,
-                BoardingStopId = dto.BoardingStopId,
-                DropOffStopId = dto.DropOffStopId,
-                Days = dto.Days != null && dto.Days.Any() ? string.Join(",", dto.Days) : string.Empty,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _context.Bookings.Add(booking);
-            await _context.SaveChangesAsync();
-
-            return Ok(new { Message = "Booking confirmed successfully!", BookingId = booking.Id });
-        }
+        return Ok(bookings);
     }
 }

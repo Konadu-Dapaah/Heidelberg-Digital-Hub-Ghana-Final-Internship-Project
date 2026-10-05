@@ -39,7 +39,7 @@ public class RoutesController : ControllerBase
         return Ok(route);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<IActionResult> CreateRoute([FromBody] CreateRouteDto dto)
     {
@@ -63,7 +63,7 @@ public class RoutesController : ControllerBase
         return CreatedAtAction(nameof(GetRoute), new { id = route.Id }, route);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPost("{id}/stops")]
     public async Task<IActionResult> AddStop(int id, [FromBody] CreateStopDto dto)
     {
@@ -85,7 +85,7 @@ public class RoutesController : ControllerBase
         return Ok(stop);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteRoute(int id)
     {
@@ -95,6 +95,18 @@ public class RoutesController : ControllerBase
 
         if (route == null) return NotFound();
 
+        var stopIds = route.Stops.Select(s => s.Id).ToList();
+
+        // Remove any bookings referencing this route or its stops first —
+        // the foreign keys are set to Restrict, so leaving them in place
+        // causes PostgreSQL to reject the delete with a 500 error.
+        var relatedBookings = await _context.Bookings
+            .Where(b => b.RouteId == id
+                     || stopIds.Contains(b.BoardingStopId)
+                     || stopIds.Contains(b.DropOffStopId))
+            .ToListAsync();
+
+        _context.Bookings.RemoveRange(relatedBookings);
         _context.Stops.RemoveRange(route.Stops);
         _context.Routes.Remove(route);
         await _context.SaveChangesAsync();

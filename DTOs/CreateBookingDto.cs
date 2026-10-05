@@ -5,5 +5,5 @@ public class CreateBookingDto
     public int RouteId { get; set; }
     public int BoardingStopId { get; set; }
     public int DropOffStopId { get; set; }
-    public List<string> Days { get; set; } = new List<string>();
+    public List<string> Days { get; set; } = new();
 }
