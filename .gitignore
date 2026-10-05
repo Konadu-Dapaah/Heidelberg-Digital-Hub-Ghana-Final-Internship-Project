@@ -9,7 +9,8 @@ bin/
 obj/
 appsettings.Development.json
 appsettings.Production.json
-
+.env
+*.env
 # IDE / System configuration
 .vs/
 .vscode/
