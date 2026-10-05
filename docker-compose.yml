@@ -13,7 +13,11 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   api:
     build:
       context: .
@@ -26,7 +30,20 @@ services:
       - ConnectionStrings__DefaultConnection=Host=52.4.152.2;Port=5432;Database=Commute360;Username=postgres;Password=amaisacloudandnetworkengineer
       - JWT_KEY=amaandjojoaresiblignswhowillmake
     depends_on:
-      - db
-
+       db:
+          condition: service_healthy  
+  caddy:
+    image: caddy:2
+    container_name: commute360-caddy-1
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:
