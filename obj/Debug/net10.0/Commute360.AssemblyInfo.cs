@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Commute360")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+03074daaf224d7654d8adea6294724d9eb51e84c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1446ccc93e99165bb6da715125d2a67fb618fe54")]
 [assembly: System.Reflection.AssemblyProductAttribute("Commute360")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Commute360")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
