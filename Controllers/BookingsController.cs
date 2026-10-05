@@ -32,7 +32,7 @@ namespace Commute360.Controllers
         {
             if (dto == null)
             {
-                return BadRequest(new { Message = "Invalid request payload." });
+                return BadRequest(new { Message = "Invalid or missing payload." });
             }
 
             if (!ModelState.IsValid)
@@ -40,10 +40,11 @@ namespace Commute360.Controllers
                 return BadRequest(ModelState);
             }
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId))
+            // Extract user ID from token safely
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
             {
-                return Unauthorized();
+                return Unauthorized(new { Message = "Invalid or expired token." });
             }
 
             // Verify route existence and include stops
@@ -70,14 +71,14 @@ namespace Commute360.Controllers
                 return BadRequest(new { Message = "Boarding and drop-off stops cannot be identical." });
             }
 
-            // Create and persist the booking entry
+            // Create and save booking
             var booking = new Booking
             {
-                UserId = int.Parse(userId),
+                UserId = userId,
                 RouteId = dto.RouteId,
                 BoardingStopId = dto.BoardingStopId,
                 DropOffStopId = dto.DropOffStopId,
-                Days = dto.Days != null ? string.Join(",", dto.Days) : string.Empty,
+                Days = dto.Days != null && dto.Days.Any() ? string.Join(",", dto.Days) : string.Empty,
                 CreatedAt = DateTime.UtcNow
             };
 

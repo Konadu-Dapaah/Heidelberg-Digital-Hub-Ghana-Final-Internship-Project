@@ -23,7 +23,7 @@ services:
     ports:
       - "5291:80"
     environment:
-      - ConnectionStrings__DefaultConnection=Host=52.4.152.2;Port=5432;Database=Commute360;Username=postgres;Password=2cT&$wht1
+      - ConnectionStrings__DefaultConnection=Host=52.4.152.2;Port=5432;Database=Commute360;Username=postgres;Password=asdfghjkl
       - JWT_KEY=amaandjojoaresiblignswhowillmake
     depends_on:
       - db

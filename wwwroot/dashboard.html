@@ -11,6 +11,17 @@
   <link rel="stylesheet" href="/css/auth.css" />
   <link rel="stylesheet" href="/css/routes.css" />
   <link rel="stylesheet" href="/css/dashboard.css" />
+  <style>
+    /* Force the map to have real, visible dimensions regardless of dashboard.css */
+    #map {
+      height: 420px !important;
+      width: 100% !important;
+      border-radius: 12px;
+    }
+    .map-panel {
+      min-height: 420px;
+    }
+  </style>
 </head>
 <body>
   <script src="/nav.js"></script>
@@ -164,56 +175,60 @@
         liveBusMarker = null;
       }
 
-      map = L.map(mapEl).setView([5.6037, -0.1870], 13);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "&copy; OpenStreetMap contributors"
-      }).addTo(map);
-
-      const sorted = (stops || [])
-        .slice()
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-
-      if (sorted.length === 0) {
-        mapPlaceholder.hidden = false;
-        mapPlaceholder.querySelector("p").textContent = "This route has no mapped stops yet.";
-        mapEl.hidden = true;
-        return;
-      }
-
-      sorted.forEach((stop) => {
-        const isBoard = stop.id === boardingStopId;
-        const isDrop = stop.id === dropOffStopId;
-        let label = stop.name;
-        if (isBoard) label = `${stop.name} (Boarding)`;
-        if (isDrop) label = `${stop.name} (Drop-off)`;
-
-        // Parse coordinates defensively to float values
-        const lat = parseFloat(stop.latitude);
-        const lng = parseFloat(stop.longitude);
-
-        if (!isNaN(lat) && !isNaN(lng)) {
-          const marker = L.marker([lat, lng]).addTo(map);
-          marker.bindPopup(label);
-          if (isBoard || isDrop) marker.openPopup();
-        }
-      });
-
-      // Safely parse lat/lngs for route polyline
-      const latlngs = sorted
-        .map((s) => [parseFloat(s.latitude), parseFloat(s.longitude)])
-        .filter(([lat, lng]) => !isNaN(lat) && !isNaN(lng));
-
-      if (latlngs.length > 0) {
-        routeLine = L.polyline(latlngs, {
-          color: "#2dd4bf",
-          weight: 4,
-          opacity: 0.9
+      // Give the browser one frame to actually apply "hidden = false" before Leaflet measures the div
+      requestAnimationFrame(() => {
+        map = L.map(mapEl).setView([5.6037, -0.1870], 13);
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "&copy; OpenStreetMap contributors",
+          maxZoom: 19
         }).addTo(map);
 
-        map.fitBounds(routeLine.getBounds(), { padding: [36, 36] });
-      }
+        const sorted = (stops || [])
+          .slice()
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-      setTimeout(() => map.invalidateSize(), 80);
+        if (sorted.length === 0) {
+          mapPlaceholder.hidden = false;
+          mapPlaceholder.querySelector("p").textContent = "This route has no mapped stops yet.";
+          mapEl.hidden = true;
+          return;
+        }
+
+        sorted.forEach((stop) => {
+          const isBoard = stop.id === boardingStopId;
+          const isDrop = stop.id === dropOffStopId;
+          let label = stop.name;
+          if (isBoard) label = `${stop.name} (Boarding)`;
+          if (isDrop) label = `${stop.name} (Drop-off)`;
+
+          const lat = parseFloat(stop.latitude);
+          const lng = parseFloat(stop.longitude);
+
+          if (!isNaN(lat) && !isNaN(lng)) {
+            const marker = L.marker([lat, lng]).addTo(map);
+            marker.bindPopup(label);
+            if (isBoard || isDrop) marker.openPopup();
+          }
+        });
+
+        const latlngs = sorted
+          .map((s) => [parseFloat(s.latitude), parseFloat(s.longitude)])
+          .filter(([lat, lng]) => !isNaN(lat) && !isNaN(lng));
+
+        if (latlngs.length > 0) {
+          routeLine = L.polyline(latlngs, {
+            color: "#2dd4bf",
+            weight: 4,
+            opacity: 0.9
+          }).addTo(map);
+
+          map.fitBounds(routeLine.getBounds(), { padding: [36, 36] });
+        }
+
+        // Call invalidateSize twice: once immediately, once after layout settles
+        map.invalidateSize();
+        setTimeout(() => map.invalidateSize(), 300);
+      });
     }
 
     async function setupSignalR(routeId) {
@@ -229,12 +244,10 @@
         .build();
 
       signalRConnection.on("ReceiveLocation", (busId, latitude, longitude) => {
-        console.log(`Live Location Received -> Route: ${routeId}, Lat: ${latitude}, Lng: ${longitude}`);
-
         const lat = parseFloat(latitude);
         const lng = parseFloat(longitude);
 
-        if (isNaN(lat) || isNaN(lng)) return;
+        if (isNaN(lat) || isNaN(lng) || !map) return;
 
         if (liveBusMarker) {
           liveBusMarker.setLatLng([lat, lng]);
@@ -253,7 +266,6 @@
 
       try {
         await signalRConnection.start();
-        console.log("SignalR Connected to Hub.");
         await signalRConnection.invoke("JoinRoute", routeId.toString());
       } catch (err) {
         console.error("SignalR Connection Error: ", err);
@@ -274,7 +286,7 @@
         }
 
         if (!res.ok) {
-          bookingInfoEl.innerHTML = `<div class="empty-state">Couldn’t load dashboard (${res.status}).</div>`;
+          bookingInfoEl.innerHTML = `<div class="empty-state">Couldn't load dashboard (${res.status}).</div>`;
           return;
         }
 

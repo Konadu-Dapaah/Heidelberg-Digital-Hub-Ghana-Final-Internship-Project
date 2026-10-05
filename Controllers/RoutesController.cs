@@ -39,9 +39,9 @@ public class RoutesController : ControllerBase
         return Ok(route);
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     [HttpPost]
-    public async Task<IActionResult> CreateRoute(CreateRouteDto dto)
+    public async Task<IActionResult> CreateRoute([FromBody] CreateRouteDto dto)
     {
         if (dto.Capacity <= 0)
             return BadRequest("Capacity must be greater than zero.");
@@ -60,12 +60,12 @@ public class RoutesController : ControllerBase
         _context.Routes.Add(route);
         await _context.SaveChangesAsync();
 
-        return Ok(route);
+        return CreatedAtAction(nameof(GetRoute), new { id = route.Id }, route);
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     [HttpPost("{id}/stops")]
-    public async Task<IActionResult> AddStop(int id, CreateStopDto dto)
+    public async Task<IActionResult> AddStop(int id, [FromBody] CreateStopDto dto)
     {
         var route = await _context.Routes.FindAsync(id);
         if (route == null) return NotFound("Route not found.");
@@ -84,20 +84,21 @@ public class RoutesController : ControllerBase
 
         return Ok(stop);
     }
-    [Authorize(Roles = "Admin")]
-[HttpDelete("{id}")]
-public async Task<IActionResult> DeleteRoute(int id)
-{
-    var route = await _context.Routes
-        .Include(r => r.Stops)
-        .FirstOrDefaultAsync(r => r.Id == id);
 
-    if (route == null) return NotFound();
+    [Authorize]
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteRoute(int id)
+    {
+        var route = await _context.Routes
+            .Include(r => r.Stops)
+            .FirstOrDefaultAsync(r => r.Id == id);
 
-    _context.Stops.RemoveRange(route.Stops);
-    _context.Routes.Remove(route);
-    await _context.SaveChangesAsync();
+        if (route == null) return NotFound();
 
-    return Ok(new { message = "Route deleted." });
-}
+        _context.Stops.RemoveRange(route.Stops);
+        _context.Routes.Remove(route);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Route deleted." });
+    }
 }

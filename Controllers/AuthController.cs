@@ -27,10 +27,10 @@ public class AuthController : ControllerBase
         if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
             return BadRequest("Email already registered.");
 
-        // 2. Role validation check
-        var allowedRoles = new[] { "Staff", "Driver" };
+        // 2. Role validation check (Updated: Added 'Admin')
+        var allowedRoles = new[] { "Staff", "Driver", "Admin" };
         if (!allowedRoles.Contains(dto.Role))
-            return BadRequest("Role must be Staff or Driver.");
+            return BadRequest("Role must be Staff, Driver, or Admin.");
 
         // 3. Create the new user entity
         var user = new User
@@ -55,6 +55,6 @@ public class AuthController : ControllerBase
         if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
             return Unauthorized("Invalid email or password.");
 
-        return Ok(new { token = _tokenService.CreateToken(user) });
+        return Ok(new { token = _tokenService.CreateToken(user), role = user.Role });
     }
 }

@@ -86,9 +86,12 @@
       </section>
     </div>
   </div>
+
   <script src="/nav.js"></script>
   <script>
-    const token = localStorage.getItem("token");
+    // Retrieve token matching any standard key name
+    const token = localStorage.getItem("authToken") || localStorage.getItem("token") || localStorage.getItem("jwt");
+
     if (!token) {
       window.location.href = "/login.html";
     }
@@ -105,10 +108,15 @@
       }
     }
 
-    document.getElementById("logoutBtn").addEventListener("click", () => {
+    function clearAuthAndRedirect() {
+      localStorage.removeItem("authToken");
       localStorage.removeItem("token");
+      localStorage.removeItem("userRole");
+      localStorage.removeItem("role");
       window.location.href = "/login.html";
-    });
+    }
+
+    document.getElementById("logoutBtn").addEventListener("click", clearAuthAndRedirect);
 
     // Fetch routes from backend
     async function loadRoutes() {
@@ -118,8 +126,7 @@
         });
 
         if (res.status === 401) {
-          localStorage.removeItem("token");
-          window.location.href = "/login.html";
+          clearAuthAndRedirect();
           return;
         }
 
@@ -128,9 +135,13 @@
         routeSelect.innerHTML = '<option value="">-- Choose a Route --</option>';
 
         routesList.forEach(r => {
+          const routeId = r.id || r.Id;
+          const origin = r.origin || r.Origin || "";
+          const destination = r.destination || r.Destination || "";
+
           const opt = document.createElement("option");
-          opt.value = r.id;
-          opt.textContent = `${r.origin} ➔ ${r.destination}`;
+          opt.value = routeId;
+          opt.textContent = `${origin} ➔ ${destination}`;
           routeSelect.appendChild(opt);
         });
       } catch (err) {
@@ -152,8 +163,10 @@
         return;
       }
 
-      const selectedRoute = routesList.find(r => r.id === routeId);
-      if (!selectedRoute || !selectedRoute.stops || selectedRoute.stops.length === 0) {
+      const selectedRoute = routesList.find(r => (r.id || r.Id) === routeId);
+      const stops = selectedRoute ? (selectedRoute.stops || selectedRoute.Stops) : null;
+
+      if (!selectedRoute || !stops || stops.length === 0) {
         boardingSelect.disabled = true;
         dropOffSelect.disabled = true;
         boardingSelect.innerHTML = '<option value="">-- No Stops Available --</option>';
@@ -164,17 +177,21 @@
       boardingSelect.innerHTML = '<option value="">-- Select Boarding Stop --</option>';
       dropOffSelect.innerHTML = '<option value="">-- Select Drop-off Stop --</option>';
 
-      const sortedStops = [...selectedRoute.stops].sort((a, b) => a.order - b.order);
+      const sortedStops = [...stops].sort((a, b) => (a.order ?? a.Order) - (b.order ?? b.Order));
 
       sortedStops.forEach(s => {
+        const stopId = s.id || s.Id;
+        const stopName = s.name || s.Name;
+        const stopOrder = (s.order ?? s.Order ?? 0) + 1;
+
         const bOpt = document.createElement("option");
-        bOpt.value = s.id;
-        bOpt.textContent = `${s.order + 1}. ${s.name}`;
+        bOpt.value = stopId;
+        bOpt.textContent = `${stopOrder}. ${stopName}`;
         boardingSelect.appendChild(bOpt);
 
         const dOpt = document.createElement("option");
-        dOpt.value = s.id;
-        dOpt.textContent = `${s.order + 1}. ${s.name}`;
+        dOpt.value = stopId;
+        dOpt.textContent = `${stopOrder}. ${stopName}`;
         dropOffSelect.appendChild(dOpt);
       });
 
@@ -225,8 +242,7 @@
         });
 
         if (res.status === 401) {
-          localStorage.removeItem("token");
-          window.location.href = "/login.html";
+          clearAuthAndRedirect();
           return;
         }
 
@@ -236,7 +252,7 @@
           setMessage(bookingMsg, "Booking confirmed! Redirecting to dashboard...", "success");
           setTimeout(() => {
             window.location.href = "/dashboard.html";
-          }, 1500);
+          }, 1200);
         } else {
           setMessage(bookingMsg, "Failed: " + JSON.stringify(data.errors || data.message || data), "error");
         }

@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\AK$\\Desktop\\csharp_playground\\dotnetDependencies\\commute360\\Commute360.csproj": {}
+    "C:\\Users\\AK$\\Desktop\\csharp_playground\\dotnetDependencies\\Commute360\\Commute360.csproj": {}
   },
   "projects": {
-    "C:\\Users\\AK$\\Desktop\\csharp_playground\\dotnetDependencies\\commute360\\Commute360.csproj": {
+    "C:\\Users\\AK$\\Desktop\\csharp_playground\\dotnetDependencies\\Commute360\\Commute360.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\AK$\\Desktop\\csharp_playground\\dotnetDependencies\\commute360\\Commute360.csproj",
+        "projectUniqueName": "C:\\Users\\AK$\\Desktop\\csharp_playground\\dotnetDependencies\\Commute360\\Commute360.csproj",
         "projectName": "Commute360",
-        "projectPath": "C:\\Users\\AK$\\Desktop\\csharp_playground\\dotnetDependencies\\commute360\\Commute360.csproj",
+        "projectPath": "C:\\Users\\AK$\\Desktop\\csharp_playground\\dotnetDependencies\\Commute360\\Commute360.csproj",
         "packagesPath": "C:\\Users\\AK$\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\AK$\\Desktop\\csharp_playground\\dotnetDependencies\\commute360\\obj\\",
+        "outputPath": "C:\\Users\\AK$\\Desktop\\csharp_playground\\dotnetDependencies\\Commute360\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
