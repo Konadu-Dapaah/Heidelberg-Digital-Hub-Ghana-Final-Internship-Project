@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: Commute360
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: azsxdcfvgbhnjmkl
+      POSTGRES_PASSWORD: amaisacloudandnetworkengineer
     ports:
       - "5432:5432"
     volumes:
@@ -23,7 +23,7 @@ services:
     ports:
       - "5291:80"
     environment:
-      - ConnectionStrings__DefaultConnection=Host=52.4.152.2;Port=5432;Database=Commute360;Username=postgres;Password=azsxdcfvgbhnjmkl
+      - ConnectionStrings__DefaultConnection=Host=52.4.152.2;Port=5432;Database=Commute360;Username=postgres;Password=amaisacloudandnetworkengineer
       - JWT_KEY=amaandjojoaresiblignswhowillmake
     depends_on:
       - db
