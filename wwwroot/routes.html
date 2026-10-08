@@ -129,10 +129,10 @@
     const boardingSelect = document.getElementById("boardingStop");
     const dropOffSelect = document.getElementById("dropOffStop");
 
-    const apiBase = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+   const apiBase = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
   ? "http://localhost:5291"
-  : "https://7t2sq1ln-5291.uks1.devtunnels.ms"; // Your active DevTunnel URL
-
+  : "https://commute360-api.onrender.com"; // Your live Render API URL
+  
     function setMessage(text, type) {
       messageEl.textContent = text;
       messageEl.className = "message" + (type ? ` is-${type}` : "");
