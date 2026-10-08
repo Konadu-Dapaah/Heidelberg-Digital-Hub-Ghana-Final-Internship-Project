@@ -129,7 +129,9 @@
     const boardingSelect = document.getElementById("boardingStop");
     const dropOffSelect = document.getElementById("dropOffStop");
 
-    const apiBase = window.location.port ? "" : "http://localhost:5291";
+    const apiBase = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+  ? "http://localhost:5291"
+  : "https://7t2sq1ln-5291.uks1.devtunnels.ms"; // Your active DevTunnel URL
 
     function setMessage(text, type) {
       messageEl.textContent = text;
@@ -252,9 +254,11 @@
 
       const boardingStopId = parseInt(boardingSelect.value, 10);
       const dropOffStopId = parseInt(dropOffSelect.value, 10);
+
+      // FIX: send days as an array (the API's DTO expects List<string>),
+      // not a comma-joined string.
       const days = Array.from(document.querySelectorAll("#daysGrid input:checked"))
-        .map((cb) => cb.value)
-        .join(",");
+        .map((cb) => cb.value);
 
       if (!boardingStopId || !dropOffStopId) {
         setMessage("Please choose boarding and drop-off stops.", "error");
@@ -266,7 +270,8 @@
         return;
       }
 
-      if (!days) {
+      // FIX: an empty array is truthy in JS, so check the length instead.
+      if (days.length === 0) {
         setMessage("Pick at least one riding day.", "error");
         return;
       }

@@ -6,4 +6,9 @@ public class CreateRouteDto
     public string Destination { get; set; } = string.Empty;
     public DateTime ScheduleTime { get; set; }
     public int Capacity { get; set; }
+
+    public int? DriverId { get; set; }
+
+    // List of stops supplied when creating the route
+    public List<CreateStopDto> Stops { get; set; } = new();
 }

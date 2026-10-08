@@ -1,30 +1,51 @@
-// imports statements
 using Microsoft.EntityFrameworkCore;
+using Commute360.Models;
 using Route = Commute360.Models.Route; 
 
 namespace Commute360.Data;
+
 public class AppDbContext : DbContext
 {
-    // constructor that takes DbContextOptions and passes it to the base class constructor
-    //as well as ccreates database tables for stops, users, routes and bookings
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
-    public DbSet<Commute360.Models.Stop> Stops { get; set; }
-    public DbSet<Commute360.Models.User> Users { get; set; }
-    public DbSet<Commute360.Models.Route> Routes { get; set; }
-    public DbSet<Commute360.Models.Booking> Bookings { get; set; }
+
+    public DbSet<Stop> Stops { get; set; } = null!;
+    public DbSet<User> Users { get; set; } = null!;
+    public DbSet<Route> Routes { get; set; } = null!;
+    public DbSet<Booking> Bookings { get; set; } = null!;
+    public DbSet<BusLocation> BusLocations { get; set; } = null!;
+    public DbSet<DriverAlert> DriverAlerts { get; set; } = null!;
+    public DbSet<WaitlistEntry> WaitlistEntries { get; set; } = null!;
+    public DbSet<Announcement> Announcements { get; set; } = null!;
+    public DbSet<Boarding> Boardings { get; set; } = null!;
+    public DbSet<SkippedRide> SkippedRides { get; set; } = null!;
+    public DbSet<EmailToken> EmailTokens { get; set; } = null!;
+    public DbSet<SosIncident> SosIncidents { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
-{
-    modelBuilder.Entity<Commute360.Models.Booking>()
-        .HasOne(b => b.BoardingStop)
-        .WithMany()
-        .HasForeignKey(b => b.BoardingStopId)
-        .OnDelete(DeleteBehavior.Restrict);
+    {
+        modelBuilder.Entity<BusLocation>().HasIndex(l => l.RouteId).IsUnique();
+        modelBuilder.Entity<DriverAlert>().HasIndex(a => new { a.RouteId, a.CreatedAt });
 
-    modelBuilder.Entity<Commute360.Models.Booking>()
-        .HasOne(b => b.DropOffStop)
-        .WithMany()
-        .HasForeignKey(b => b.DropOffStopId)
-        .OnDelete(DeleteBehavior.Restrict);
+        // One skip and one boarding record per booking per date
+        modelBuilder.Entity<SkippedRide>().HasIndex(s => new { s.BookingId, s.RideDate }).IsUnique();
+        modelBuilder.Entity<Boarding>().HasIndex(b => new { b.BookingId, b.RideDate }).IsUnique();
+
+        modelBuilder.Entity<WaitlistEntry>().HasIndex(w => new { w.RouteId, w.Status, w.CreatedAt });
+        modelBuilder.Entity<EmailToken>().HasIndex(t => t.TokenHash).IsUnique();
+        modelBuilder.Entity<Announcement>().HasIndex(a => a.CreatedAt);
+        modelBuilder.Entity<SosIncident>().HasIndex(s => new { s.ResolvedAt, s.CreatedAt });
+
+        modelBuilder.Entity<Booking>()
+            .HasOne(b => b.BoardingStop)
+            .WithMany()
+            .HasForeignKey(b => b.BoardingStopId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Booking>()
+            .HasOne(b => b.DropOffStop)
+            .WithMany()
+            .HasForeignKey(b => b.DropOffStopId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
 }
-}
+//  DO NOT PUT ANY "public class Announcement", "public class WaitlistEntry", ETC. DOWN HERE!using Microsoft.EntityFrameworkCore;

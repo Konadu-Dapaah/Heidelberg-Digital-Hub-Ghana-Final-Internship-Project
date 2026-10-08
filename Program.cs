@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Commute360.Data;
@@ -11,14 +13,18 @@ using Swashbuckle.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Add CORS policy
+// Allow listening on HTTP and HTTPS across all local interfaces
+builder.WebHost.UseUrls("http://0.0.0.0:5291");
+
+// 1. Configure CORS (Allows Dev Tunnels and Mobile Browsers)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.SetIsOriginAllowed(_ => true) // Accepts all origins including DevTunnels HTTPS
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials(); // Needed for SignalR / WebSockets
     });
 });
 
@@ -29,7 +35,7 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
 
-// Swagger / OpenAPI Services (Replaces AddOpenApi)
+// Swagger / OpenAPI Services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -38,8 +44,25 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<PasswordService>();
+builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddScoped<AccountMailer>();
 builder.Services.AddHealthChecks();
 builder.Services.AddSignalR();
+
+// Rate limiting
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 8,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
+});
 
 // 3. Configure JWT Authentication
 builder.Services.AddAuthentication(options =>
@@ -100,17 +123,22 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// 5. Development Pipeline (Replaces MapOpenApi and MapScalarApiReference)
+// 5. Development Pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
+app.UseDefaultFiles();
 app.UseStaticFiles();
+
 app.UseRouting();
+
+// CORS must be placed strictly after UseRouting() and before UseAuthentication()
 app.UseCors("AllowAll");
 
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

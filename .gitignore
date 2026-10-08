@@ -9,6 +9,7 @@ bin/
 obj/
 appsettings.Development.json
 appsettings.Production.json
+appsettings.json
 .env
 *.env
 # IDE / System configuration
