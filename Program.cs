@@ -6,9 +6,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Identity;
 using Commute360.Data;
 using Commute360.Services;
 using Commute360.Hubs;
+using Commute360.Models;
 using Swashbuckle.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -124,10 +126,8 @@ using (var scope = app.Services.CreateScope())
 }
 
 // 5. Global Middleware Pipeline
-// MUST be first: Enable CORS globally across every incoming request
 app.UseCors("AllowAll");
 
-// Short-circuit HTTP OPTIONS preflight requests before authentication/routing
 app.Use(async (context, next) =>
 {
     if (context.Request.Method == "OPTIONS")
@@ -156,5 +156,39 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<BusLocationHub>("/hubs/bus");
 app.MapHealthChecks("/health");
+
+// 7. Seed Initial Admin Account if Database is Empty
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var db = services.GetRequiredService<AppDbContext>();
+
+        if (!db.Users.Any(u => u.Role == "Admin"))
+        {
+            var adminUser = new User
+            {
+                Name = "Ama",
+                Email = "amaboakyedapaah@gmail.com",
+                Role = "Admin",
+                EmailVerified = true,
+                
+            };
+
+            var hasher = new PasswordHasher<User>();
+            adminUser.PasswordHash = hasher.HashPassword(adminUser, "Admin123");
+
+            db.Users.Add(adminUser);
+            db.SaveChanges();
+            Console.WriteLine("--> Seeded default Admin account: admin@commute360.com / Admin123!");
+        }
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while seeding the admin user.");
+    }
+}
 
 app.Run();
