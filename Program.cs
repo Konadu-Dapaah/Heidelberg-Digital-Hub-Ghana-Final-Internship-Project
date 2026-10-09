@@ -180,7 +180,7 @@ using (var scope = app.Services.CreateScope())
 
             db.Users.Add(adminUser);
             db.SaveChanges();
-            Console.WriteLine("--> Seeded default Admin account: admin@commute360.com / Admin123!");
+            Console.WriteLine("--> Seeded default Admin account: amaboakyedapaah@gmail.com / Admin123!");
         }
     }
     catch (Exception ex)
