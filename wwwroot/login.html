@@ -8,6 +8,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/auth.css" />
+  <!-- Load shared app config containing API_BASE -->
+  <script src="/config.js"></script>
 </head>
 <body>
   <script src="/nav.js"></script>
@@ -142,7 +144,9 @@
       submitBtn.classList.add("is-loading");
       setMessage("");
 
-      const apiUrl = "/api/auth/login";
+      // Resolves API URL dynamically based on APP_CONFIG (Render URL when live, relative when local)
+      const baseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || window.CONFIG?.API_BASE || "";
+      const apiUrl = `${baseUrl}/api/auth/login`;
 
       try {
         const response = await fetch(apiUrl, {
