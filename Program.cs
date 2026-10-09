@@ -16,12 +16,12 @@ var builder = WebApplication.CreateBuilder(args);
 // Allow listening on HTTP and HTTPS across all local interfaces
 builder.WebHost.UseUrls("http://0.0.0.0:5291");
 
-// 1. Configure CORS (Allows Dev Tunnels and Mobile Browsers)
+// 1. Configure CORS (Allows Dev Tunnels, Mobile Browsers, and Vercel)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.SetIsOriginAllowed(_ => true) // Accepts all origins including DevTunnels HTTPS
+        policy.SetIsOriginAllowed(_ => true) // Accepts all origins including Vercel deployment URLs
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials(); // Needed for SignalR / WebSockets
@@ -123,7 +123,9 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// 5. Development Pipeline
+// 5. Pipeline Setup (CORS must be placed FIRST before Routing/Static Files)
+app.UseCors("AllowAll");
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -134,10 +136,6 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.UseRouting();
-
-// CORS must be placed strictly after UseRouting() and before UseAuthentication()
-app.UseCors("AllowAll");
-
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
