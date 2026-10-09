@@ -8,6 +8,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/auth.css" />
+  <!-- Shared config for live Render API base URL -->
+  <script src="/config.js"></script>
 </head>
 <body>
   <script src="/nav.js"></script>
@@ -150,8 +152,9 @@
       submitBtn.classList.add("is-loading");
       setMessage("");
 
-      // Relative path for Caddy reverse proxy
-      const apiUrl = "/api/auth/register";
+      // Resolve base URL from config.js or fallback dynamically
+      const baseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || window.CONFIG?.API_BASE || "";
+      const apiUrl = `${baseUrl}/api/auth/register`;
 
       try {
         const response = await fetch(apiUrl, {
