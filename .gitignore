@@ -23,3 +23,21 @@ obj/
 appsettings.Development.json
 .env
 *.pem
+ 
+ bin/ 
+ obj/ 
+ appsettings.Development.json 
+ .env 
+ *.pem
+
+appsettings.Development.json
+.env
+*.pem
+bin/
+obj/
+
+appsettings.Development.json
+.env
+*.pem
+bin/
+obj/
