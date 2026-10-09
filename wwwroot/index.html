@@ -9,8 +9,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/auth.css" />
   <link rel="stylesheet" href="/css/dash.css" />
+  <!-- App config providing Render API_BASE -->
+  <script src="/config.js"></script>
   <style>
-    /* Top Navigation Bar Styling */
     .top-nav {
       position: absolute;
       top: 0;
@@ -60,7 +61,6 @@
   </style>
 </head>
 <body>
-  <!-- Top Navigation Header -->
   <header class="top-nav">
     <a href="/" class="top-nav__logo">Commute<span>360</span></a>
     
@@ -106,7 +106,6 @@
 
   <script src="/auth.js"></script>
   <script>
-    // If someone is already logged in, update header links and show dashboard shortcut
     (async function () {
       const token = Auth.token();
       if (!token) return;
@@ -120,13 +119,11 @@
 
         const userHome = Auth.homeFor(user.role);
 
-        // Update hero panel buttons
         document.getElementById("continueBtn").href = userHome;
         document.getElementById("continueBtn").textContent = `Continue as ${user.name}`;
         document.getElementById("guestActions").hidden = true;
         document.getElementById("memberActions").hidden = false;
 
-        // Update top navigation bar for logged-in user
         const headerNav = document.getElementById("headerNav");
         headerNav.innerHTML = `<a href="${userHome}" class="top-nav__btn">Dashboard</a>`;
       } catch (err) {

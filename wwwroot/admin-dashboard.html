@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="/css/auth.css" />
   <link rel="stylesheet" href="/css/routes.css" />
   <link rel="stylesheet" href="/css/dash.css" />
+  <!-- Configuration script placed in head for early initialization -->
+  <script src="/config.js"></script>
 </head>
 <body>
   <div class="scene" aria-hidden="true">
@@ -166,12 +168,10 @@
   </div>
 
   <script src="/auth.js"></script>
-  <script src="/config.js"></script>
   <script>
-    // Change this to the filename of your existing "create route / add stop" page.
     const MANAGE_ROUTES_URL = "/admin-routes.html";
 
-    const cfg = window.APP_CONFIG;
+    const cfg = window.APP_CONFIG || {};
     const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
     const COLORS = ["#38bdf8", "#a78bfa", "#34d399", "#fbbf24", "#f472b6", "#fb923c"];
     const POLL_MS = 4000;
@@ -182,7 +182,6 @@
     let routes = [];
     let activeTab = "overview";
 
-    // Small DOM helper. Text is always added as text, never as HTML.
     function h(tag, props = {}, ...kids) {
       const el = document.createElement(tag);
       for (const [k, v] of Object.entries(props)) {
@@ -217,7 +216,6 @@
       }
     }
 
-    // ---------- Tabs ----------
     function showTab(name) {
       activeTab = name;
       document.querySelectorAll(".tab[data-tab]").forEach((b) =>
@@ -236,7 +234,6 @@
     $("manageLink").href = MANAGE_ROUTES_URL;
     $("logoutBtn").addEventListener("click", () => Auth.logout());
 
-    // ---------- Riders per route ----------
     function renderOverview() {
       $("statRoutes").textContent = routes.length;
       $("statRiders").textContent = routes.reduce((n, r) => n + r.riders, 0);
@@ -295,7 +292,6 @@
       }
     }
 
-    // ---------- Routes & stops ----------
     function renderRoutes() {
       const box = $("tab-routes");
       box.innerHTML = "";
@@ -328,7 +324,6 @@
       if (typeof decorateRoutes === "function") decorateRoutes();
     }
 
-    // ---------- Users ----------
     async function loadUsers() {
       const body = $("usersBody");
       body.innerHTML = "";
@@ -374,9 +369,8 @@
       }
     }
 
-    // ---------- Live tracking ----------
     let map = null, mapStarted = false;
-    const buses = {};   // routeId -> marker
+    const buses = {};
 
     function loadGoogleMaps() {
       return new Promise((resolve, reject) => {
@@ -431,7 +425,6 @@
         mapTypeControl: false
       });
 
-      // Draw every route's stops and line
       const bounds = new google.maps.LatLngBounds();
       let drawn = false;
       routes.forEach((r, i) => {
@@ -515,7 +508,6 @@
       }
     }
 
-    // ---------- Start ----------
     (async function init() {
       try {
         me = await Auth.requireRole(["Admin"]);
@@ -528,7 +520,6 @@
         renderOverview();
         renderRoutes();
 
-        // Bus count for the stat card (before the live tab is ever opened)
         const live = await Auth.api("/api/summary/live");
         if (live.ok) {
           const items = await live.json();

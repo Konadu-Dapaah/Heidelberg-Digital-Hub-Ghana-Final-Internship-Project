@@ -11,8 +11,9 @@
   <link rel="stylesheet" href="/css/auth.css" />
   <link rel="stylesheet" href="/css/routes.css" />
   <link rel="stylesheet" href="/css/dashboard.css" />
+  <!-- Include configuration script early in the head -->
+  <script src="/config.js"></script>
   <style>
-    /* Force the map to have real, visible dimensions regardless of dashboard.css */
     #map {
       height: 420px !important;
       width: 100% !important;
@@ -90,11 +91,12 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
   <script>
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || localStorage.getItem("authToken");
     if (!token) {
       window.location.href = "/login.html";
     }
 
+    const apiBase = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "";
     const bookingInfoEl = document.getElementById("bookingInfo");
     const mapEl = document.getElementById("map");
     const mapPlaceholder = document.getElementById("mapPlaceholder");
@@ -175,7 +177,6 @@
         liveBusMarker = null;
       }
 
-      // Give the browser one frame to actually apply "hidden = false" before Leaflet measures the div
       requestAnimationFrame(() => {
         map = L.map(mapEl).setView([5.6037, -0.1870], 13);
         L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -225,7 +226,6 @@
           map.fitBounds(routeLine.getBounds(), { padding: [36, 36] });
         }
 
-        // Call invalidateSize twice: once immediately, once after layout settles
         map.invalidateSize();
         setTimeout(() => map.invalidateSize(), 300);
       });
@@ -234,7 +234,7 @@
     async function setupSignalR(routeId) {
       if (!routeId) return;
 
-      const hubUrl = `/hubs/bus`;
+      const hubUrl = `${apiBase}/hubs/bus`;
 
       signalRConnection = new signalR.HubConnectionBuilder()
         .withUrl(hubUrl, {
@@ -275,7 +275,7 @@
 
     async function loadDashboard() {
       try {
-        const res = await fetch(`/api/dashboard`, {
+        const res = await fetch(`${apiBase}/api/dashboard`, {
           headers: { Authorization: "Bearer " + token }
         });
 
@@ -314,6 +314,7 @@
 
     document.getElementById("logoutBtn").addEventListener("click", () => {
       localStorage.removeItem("token");
+      localStorage.removeItem("authToken");
       window.location.href = "/login.html";
     });
 

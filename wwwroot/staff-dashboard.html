@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="/css/auth.css" />
   <link rel="stylesheet" href="/css/routes.css" />
   <link rel="stylesheet" href="/css/dash.css" />
+  <!-- App config providing Render API_BASE -->
+  <script src="/config.js"></script>
 </head>
 <body>
   <div class="scene" aria-hidden="true">
@@ -156,7 +158,6 @@
       el.className = "msg" + (type ? ` is-${type}` : "");
     }
 
-    // Next ride, skipping dates the person has marked as skipped
     function nextRide() {
       const t = new Date(booking.route.scheduleTime);
       const now = new Date();
@@ -171,7 +172,6 @@
       return "—";
     }
 
-    // ---------- Tabs ----------
     function showTab(name) {
       document.querySelectorAll(".tab[data-tab]").forEach((b) => b.classList.toggle("is-active", b.dataset.tab === name));
       $("tab-dashboard").hidden = name !== "dashboard";
@@ -180,7 +180,6 @@
     document.querySelectorAll(".tab[data-tab]").forEach((btn) => btn.addEventListener("click", () => showTab(btn.dataset.tab)));
     $("logoutBtn").addEventListener("click", () => Auth.logout());
 
-    // ---------- Week view with skip buttons ----------
     function renderWeek() {
       const box = $("weeks");
       box.innerHTML = "";
@@ -255,7 +254,6 @@
       }
     }
 
-    // ---------- Announcements and waitlist ----------
     async function loadAnnouncements() {
       try {
         const res = await Auth.api("/api/announcements");
@@ -312,7 +310,6 @@
       } catch { /* ignore */ }
     });
 
-    // ---------- Start ----------
     (async function init() {
       try {
         const user = await Auth.requireRole(["Staff"]);

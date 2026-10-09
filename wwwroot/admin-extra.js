@@ -17,7 +17,10 @@ async function fetchDrivers() {
 
 async function decorateRoutes() {
   const drivers = await fetchDrivers();
-  const panels = Array.from($("tab-routes").children);
+  const routesTab = $("tab-routes");
+  if (!routesTab) return;
+
+  const panels = Array.from(routesTab.children);
 
   routes.forEach((r, i) => {
     const panel = panels[i];
@@ -57,9 +60,13 @@ async function decorateRoutes() {
 
 // ---------- Reports ----------
 async function loadReport() {
-  const type = $("reportType").value;
-  const days = $("reportDays").value;
+  const typeEl = $("reportType");
+  const daysEl = $("reportDays");
   const msg = $("reportMsg");
+  if (!typeEl || !daysEl || !msg) return;
+
+  const type = typeEl.value;
+  const days = daysEl.value;
   msg.className = "msg";
   msg.textContent = "Loading…";
 
@@ -84,11 +91,19 @@ async function loadReport() {
 }
 
 async function downloadCsv() {
-  const type = $("reportType").value;
-  const days = $("reportDays").value;
+  const typeEl = $("reportType");
+  const daysEl = $("reportDays");
+  const msg = $("reportMsg");
+  if (!typeEl || !daysEl) return;
+
+  const type = typeEl.value;
+  const days = daysEl.value;
   try {
     const res = await Auth.api(`/api/reports/${type}/csv?days=${days}`);
-    if (!res.ok) { $("reportMsg").className = "msg is-error"; $("reportMsg").textContent = await readError(res); return; }
+    if (!res.ok) { 
+      if (msg) { msg.className = "msg is-error"; msg.textContent = await readError(res); }
+      return; 
+    }
 
     const url = URL.createObjectURL(await res.blob());
     const a = document.createElement("a");
@@ -99,18 +114,22 @@ async function downloadCsv() {
     a.remove();
     URL.revokeObjectURL(url);
   } catch (err) {
-    if (err.message !== "Unauthorized") { $("reportMsg").className = "msg is-error"; $("reportMsg").textContent = "Download failed."; }
+    if (err.message !== "Unauthorized" && msg) { 
+      msg.className = "msg is-error"; 
+      msg.textContent = "Download failed."; 
+    }
   }
 }
 
-$("reportLoad").addEventListener("click", loadReport);
-$("reportType").addEventListener("change", loadReport);
-$("reportDays").addEventListener("change", loadReport);
-$("reportCsv").addEventListener("click", downloadCsv);
+if ($("reportLoad")) $("reportLoad").addEventListener("click", loadReport);
+if ($("reportType")) $("reportType").addEventListener("change", loadReport);
+if ($("reportDays")) $("reportDays").addEventListener("change", loadReport);
+if ($("reportCsv")) $("reportCsv").addEventListener("click", downloadCsv);
 
 // ---------- Announcements ----------
 function fillAnnouncementRoutes() {
   const select = $("annRoute");
+  if (!select) return;
   if (select.options.length === routes.length + 1) return;
   select.innerHTML = "";
   select.append(h("option", { value: "", text: "Everyone" }),
@@ -120,6 +139,7 @@ function fillAnnouncementRoutes() {
 async function loadAnnouncements() {
   fillAnnouncementRoutes();
   const body = $("annBody");
+  if (!body) return;
   body.innerHTML = "";
 
   try {
@@ -146,40 +166,52 @@ async function loadAnnouncements() {
   }
 }
 
-$("annSend").addEventListener("click", async () => {
-  const msg = $("annMsg");
-  const message = $("annText").value.trim();
-  const routeId = $("annRoute").value ? Number($("annRoute").value) : null;
+if ($("annSend")) {
+  $("annSend").addEventListener("click", async () => {
+    const msg = $("annMsg");
+    const textEl = $("annText");
+    const routeEl = $("annRoute");
+    if (!textEl || !msg) return;
 
-  if (message.length < 3) { msg.className = "msg is-error"; msg.textContent = "Write a message (at least 3 characters)."; return; }
+    const message = textEl.value.trim();
+    const routeId = routeEl && routeEl.value ? Number(routeEl.value) : null;
 
-  $("annSend").disabled = true;
-  try {
-    const res = await Auth.api("/api/announcements", { method: "POST", body: JSON.stringify({ message, routeId }) });
-    if (res.ok) {
-      msg.className = "msg is-success";
-      msg.textContent = "Announcement sent. Riders see it on their dashboard.";
-      $("annText").value = "";
-      loadAnnouncements();
-    } else {
-      msg.className = "msg is-error";
-      msg.textContent = await readError(res);
+    if (message.length < 3) { 
+      msg.className = "msg is-error"; 
+      msg.textContent = "Write a message (at least 3 characters)."; 
+      return; 
     }
-  } catch (err) {
-    if (err.message !== "Unauthorized") { msg.className = "msg is-error"; msg.textContent = "Could not reach the server."; }
-  } finally {
-    $("annSend").disabled = false;
-  }
-});
+
+    $("annSend").disabled = true;
+    try {
+      const res = await Auth.api("/api/announcements", { method: "POST", body: JSON.stringify({ message, routeId }) });
+      if (res.ok) {
+        msg.className = "msg is-success";
+        msg.textContent = "Announcement sent. Riders see it on their dashboard.";
+        textEl.value = "";
+        loadAnnouncements();
+      } else {
+        msg.className = "msg is-error";
+        msg.textContent = await readError(res);
+      }
+    } catch (err) {
+      if (err.message !== "Unauthorized") { msg.className = "msg is-error"; msg.textContent = "Could not reach the server."; }
+    } finally {
+      $("annSend").disabled = false;
+    }
+  });
+}
 
 // ---------- SOS banner (checked every 10 seconds, on every tab) ----------
 async function pollSos() {
+  const box = $("sosBanner");
+  if (!box) return;
+
   try {
     const res = await Auth.api("/api/safety/sos/active");
     if (!res.ok) return;
     const items = await res.json();
 
-    const box = $("sosBanner");
     box.innerHTML = "";
     box.hidden = items.length === 0;
 

@@ -9,6 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/auth.css" />
   <link rel="stylesheet" href="/css/routes.css" />
+  <!-- Configuration script providing APP_CONFIG -->
+  <script src="/config.js"></script>
   <style>
     [hidden] { display: none !important; }
     .driver-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; align-items: start; }
@@ -115,12 +117,10 @@
 
   <script src="/auth.js"></script>
   <script>
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || localStorage.getItem("authToken");
     if (!token) window.location.href = "/login.html";
 
-    const apiBase = window.location.port ? "" : "http://localhost:5291";
-    const SEND_MS = 4000;   // how often the position is sent to the server
-
+    const SEND_MS = 4000;
     const $ = (id) => document.getElementById(id);
 
     let routeId = null;
@@ -132,7 +132,11 @@
     let firstFixSent = false;
 
     async function api(path, options = {}) {
-      const res = await fetch(apiBase + path, {
+      if (window.Auth && typeof window.Auth.api === "function") {
+        return window.Auth.api(path, options);
+      }
+      const baseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "";
+      const res = await fetch(baseUrl + path, {
         ...options,
         headers: {
           "Content-Type": "application/json",
@@ -168,7 +172,6 @@
       el.className = "msg" + (type ? ` is-${type}` : "");
     }
 
-    // ---------- Routes ----------
     async function loadRoutes() {
       try {
         const res = await api("/api/driver/routes");
@@ -183,11 +186,10 @@
       }
     }
 
-    // ---------- Screen wake lock (keeps the phone awake while driving) ----------
     async function requestWakeLock() {
       try {
         if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen");
-      } catch { /* not critical */ }
+      } catch { }
     }
     function releaseWakeLock() {
       if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
@@ -196,7 +198,6 @@
       if (document.visibilityState === "visible" && watchId !== null) requestWakeLock();
     });
 
-    // ---------- Trip ----------
     function setRunning(running) {
       $("tripBtn").textContent = running ? "End trip" : "Start trip";
       $("tripBtn").classList.toggle("big-btn--stop", running);
@@ -212,7 +213,7 @@
         `GPS on · ${c.latitude.toFixed(5)}, ${c.longitude.toFixed(5)} · ±${Math.round(c.accuracy)} m`;
       if (!firstFixSent) {
         firstFixSent = true;
-        sendLocation();     // don't wait for the timer on the first fix
+        sendLocation();
       }
     }
 
@@ -302,7 +303,6 @@
       if (watchId === null) startTrip(); else stopTrip(true);
     });
 
-    // ---------- Alerts ----------
     document.querySelectorAll(".chip").forEach((chip) => {
       chip.addEventListener("click", () => {
         $("alertType").value = chip.dataset.type;
@@ -348,7 +348,6 @@
       window.location.href = "/login.html";
     });
 
-    // ---------- Route overview (riders, boarding and drop-off counts) ----------
     let summary = [];
 
     function cell(tag, text) {
@@ -427,7 +426,6 @@
       }
     }
 
-    // ---------- Today's boarding list ----------
     async function loadManifest() {
       const box = $("manifest");
       const rid = parseInt($("routeSelect").value, 10);
@@ -485,7 +483,6 @@
       }
     }
 
-    // ---------- SOS ----------
     $("sosBtn").addEventListener("click", async () => {
       const rid = parseInt($("routeSelect").value, 10);
       const msg = $("sosMsg");
@@ -504,7 +501,6 @@
         }
       };
 
-      // Use the latest GPS fix if the trip is running, otherwise try once to get a position
       if (lastPos) { send(lastPos.coords.latitude, lastPos.coords.longitude); return; }
       if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
@@ -520,7 +516,6 @@
     $("routeSelect").addEventListener("change", () => { renderOverview(); loadManifest(); });
     setInterval(() => { if (!document.hidden) loadManifest(); }, 30000);
 
-    // Only drivers belong on this page; everyone else is sent to their own dashboard.
     Auth.requireRole(["Driver"])
       .then(async () => { await loadRoutes(); await loadOverview(); await loadManifest(); })
       .catch((err) => { if (!["Unauthorized", "Wrong role"].includes(err.message)) console.error(err); });

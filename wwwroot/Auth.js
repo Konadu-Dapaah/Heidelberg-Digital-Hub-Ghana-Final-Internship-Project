@@ -1,7 +1,9 @@
 // Shared helpers for every page: token, API calls and role-based redirects.
 (function () {
-  const apiBase = window.location.port ? "" : "http://localhost:5291";
-  const API_BASE_URL = "https://7t2sq1ln-5291.uks1.devtunnels.ms";
+  const getApiBase = () => {
+    return (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "";
+  };
+
   // Role destination map
   const HOME = {
     Admin: "/admin-dashboard.html",
@@ -10,16 +12,20 @@
   };
 
   function token() {
-    return localStorage.getItem("token");
+    return localStorage.getItem("token") || localStorage.getItem("authToken") || localStorage.getItem("jwt");
   }
 
   function logout() {
     localStorage.removeItem("token");
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("jwt");
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("role");
     window.location.href = "/login.html";
   }
 
   async function api(path, options = {}) {
-    const res = await fetch(apiBase + path, {
+    const res = await fetch(getApiBase() + path, {
       ...options,
       headers: {
         "Content-Type": "application/json",
@@ -29,8 +35,7 @@
     });
 
     if (res.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "/login.html";
+      logout();
       throw new Error("Unauthorized");
     }
     return res;
@@ -66,5 +71,5 @@
     return user;
   }
 
-  window.Auth = { apiBase, token, api, me, homeFor, goHome, requireRole, logout };
+  window.Auth = { apiBase: getApiBase(), token, api, me, homeFor, goHome, requireRole, logout };
 })();

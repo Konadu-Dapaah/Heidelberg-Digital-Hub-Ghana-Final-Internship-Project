@@ -9,6 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/auth.css" />
   <link rel="stylesheet" href="/css/routes.css" />
+  <!-- Configuration script providing Render API_BASE and Google Maps API Key -->
+  <script src="/config.js"></script>
   <style>
     [hidden] { display: none !important; }
     .track-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
@@ -87,15 +89,14 @@
     </div>
   </div>
 
-  <script src="config.js"></script>
   <script>
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || localStorage.getItem("authToken");
     if (!token) window.location.href = "/login.html";
 
-    const apiBase = window.location.port ? "" : "http://localhost:5291";
-    const cfg = window.APP_CONFIG;
-    const POLL_MS = 4000;       // how often we ask the server for the bus position
-    const STALE_MS = 45000;     // older than this = driver probably offline
+    const apiBase = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "";
+    const cfg = window.APP_CONFIG || {};
+    const POLL_MS = 4000;
+    const STALE_MS = 45000;
 
     const $ = (id) => document.getElementById(id);
     const ALERT_LABELS = { Delay: "Delay", Traffic: "Traffic", Breakdown: "Breakdown", Info: "Info", Emergency: "EMERGENCY" };
@@ -104,20 +105,23 @@
     let map, busMarker = null, busPos = null;
     let routeId = null;
     let lastAlertId = 0;
-    let stopsOrdered = [];   // this route's stops with coordinates, in order
+    let stopsOrdered = [];
     let myBooking = null;
 
     async function api(path) {
+      if (window.Auth && typeof window.Auth.api === "function") {
+        return window.Auth.api(path);
+      }
       const res = await fetch(apiBase + path, { headers: { Authorization: "Bearer " + token } });
       if (res.status === 401) {
         localStorage.removeItem("token");
+        localStorage.removeItem("authToken");
         window.location.href = "/login.html";
         throw new Error("Unauthorized");
       }
       return res;
     }
 
-    // ---------- Google Maps loader ----------
     window.gm_authFailure = () => {
       $("busPill").textContent = "Google Maps rejected the API key";
     };
@@ -138,7 +142,6 @@
       });
     }
 
-    // ---------- Map building ----------
     function makeStopEl(label, kind) {
       const el = document.createElement("div");
       el.className = "stop-dot" + (kind ? ` stop-dot--${kind}` : "");
@@ -157,7 +160,7 @@
       myBooking = booking;
 
       map = new google.maps.Map($("map"), {
-        center: stops.length ? { lat: stops[0].latitude, lng: stops[0].longitude } : cfg.DEFAULT_CENTER,
+        center: stops.length ? { lat: stops[0].latitude, lng: stops[0].longitude } : (cfg.DEFAULT_CENTER || { lat: 5.6037, lng: -0.1870 }),
         zoom: 14,
         mapId: cfg.MAP_ID,
         streetViewControl: false,
@@ -185,7 +188,6 @@
       }
     }
 
-    // ---------- Smooth bus movement ----------
     function moveBus(target) {
       const { AdvancedMarkerElement } = google.maps.marker;
 
@@ -230,8 +232,6 @@
       return `${m} min`;
     }
 
-    // ---------- ETA (an estimate, not a promise) ----------
-    // Straight-line distance between two points, in km
     function km(a, b) {
       const R = 6371, rad = Math.PI / 180;
       const dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
@@ -264,11 +264,9 @@
         return;
       }
 
-      // Distance: bus to the nearest stop, then stop by stop to the boarding stop
       let dist = km(bus, pts[nearest]);
       for (let i = nearest; i < boardIdx; i++) dist += km(pts[i], pts[i + 1]);
 
-      // Roads are longer than straight lines (x1.3). If the bus is slow or stopped, assume 20 km/h.
       const speed = d.speedKmh >= 10 ? d.speedKmh : 20;
       const minutes = Math.max(1, Math.round((dist * 1.3) / speed * 60));
 
@@ -276,7 +274,6 @@
         `Estimated arrival at ${stopsOrdered[boardIdx].name}: about ${minutes} min (${dist.toFixed(1)} km away). This is an estimate.`;
     }
 
-    // ---------- Polling ----------
     async function pollLocation() {
       try {
         const res = await api(`/api/tracking/routes/${routeId}/location`);
@@ -314,7 +311,7 @@
       head.textContent = `${ALERT_LABELS[a.type] || "Info"} · ${time}`;
 
       const body = document.createElement("div");
-      body.textContent = a.message;   // textContent: driver text can never run as HTML
+      body.textContent = a.message;
 
       li.append(head, body);
       $("alertList").prepend(li);
@@ -336,7 +333,6 @@
       }
     }
 
-    // ---------- Start ----------
     async function init() {
       try {
         const bookings = await (await api("/api/bookings/mine")).json();
@@ -379,6 +375,7 @@
 
     $("logoutBtn").addEventListener("click", () => {
       localStorage.removeItem("token");
+      localStorage.removeItem("authToken");
       window.location.href = "/login.html";
     });
 
