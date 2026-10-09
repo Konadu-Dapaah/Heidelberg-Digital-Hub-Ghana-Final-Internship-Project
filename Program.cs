@@ -23,10 +23,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.SetIsOriginAllowed(_ => true) // Allows Vercel preview/production domains and localhost
+        policy.SetIsOriginAllowed(_ => true)
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // Required for SignalR WebSockets
+              .AllowCredentials();
     });
 });
 
@@ -172,12 +172,11 @@ using (var scope = app.Services.CreateScope())
                 Name = "Ama",
                 Email = "amaboakyedapaah@gmail.com",
                 Role = "Admin",
-                EmailVerified = true,
-                
+                EmailVerified = true
             };
 
             var hasher = new PasswordHasher<User>();
-            adminUser.PasswordHash = hasher.HashPassword(adminUser, "Admin123");
+            adminUser.PasswordHash = hasher.HashPassword(adminUser, "Admin123!");
 
             db.Users.Add(adminUser);
             db.SaveChanges();

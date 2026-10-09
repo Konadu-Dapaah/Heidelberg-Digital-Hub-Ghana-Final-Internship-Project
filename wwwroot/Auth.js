@@ -21,6 +21,7 @@
     localStorage.removeItem("jwt");
     localStorage.removeItem("userRole");
     localStorage.removeItem("role");
+    sessionStorage.clear();
     window.location.href = "/login.html";
   }
 
