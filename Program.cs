@@ -16,15 +16,15 @@ var builder = WebApplication.CreateBuilder(args);
 // Allow listening on HTTP and HTTPS across all local interfaces
 builder.WebHost.UseUrls("http://0.0.0.0:5291");
 
-// 1. Configure CORS (Allows Dev Tunnels, Mobile Browsers, and Vercel)
+// 1. Configure CORS Policy
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.SetIsOriginAllowed(_ => true) // Accepts all origins including Vercel deployment URLs
+        policy.SetIsOriginAllowed(_ => true) // Allows Vercel preview/production domains and localhost
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // Needed for SignalR / WebSockets
+              .AllowCredentials(); // Required for SignalR WebSockets
     });
 });
 
@@ -123,8 +123,20 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// 5. Pipeline Setup (CORS must be placed FIRST before Routing/Static Files)
+// 5. Global Middleware Pipeline
+// MUST be first: Enable CORS globally across every incoming request
 app.UseCors("AllowAll");
+
+// Short-circuit HTTP OPTIONS preflight requests before authentication/routing
+app.Use(async (context, next) =>
+{
+    if (context.Request.Method == "OPTIONS")
+    {
+        context.Response.StatusCode = StatusCodes.Status200OK;
+        return;
+    }
+    await next();
+});
 
 if (app.Environment.IsDevelopment())
 {
