@@ -17,3 +17,9 @@ appsettings.json
 .vscode/
 .DS_Store
 Thumbs.db
+bin/
+obj/
+
+appsettings.Development.json
+.env
+*.pem
