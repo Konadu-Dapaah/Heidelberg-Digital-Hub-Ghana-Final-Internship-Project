@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +29,6 @@ public class AuthController : ControllerBase
     }
 
     // Compares an invite code without leaking timing information.
-    // A role whose code isn't configured can't be self-registered at all.
     private static bool CodeMatches(string? supplied, string? expected)
     {
         if (string.IsNullOrEmpty(supplied) || string.IsNullOrEmpty(expected)) return false;
@@ -48,8 +48,7 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.Password) || dto.Password.Length < 8)
             return BadRequest("Password must be at least 8 characters.");
 
-        // 2. Role: anyone can register as Staff. Driver and Admin need an invite code,
-        //    otherwise any visitor could create an admin account.
+        // 2. Role validation and invite code verification
         var role = string.IsNullOrWhiteSpace(dto.Role) ? "Staff" : dto.Role;
 
         var allowedRoles = new[] { "Staff", "Driver", "Admin" };
@@ -62,21 +61,23 @@ public class AuthController : ControllerBase
         if (role == "Admin" && !CodeMatches(dto.InviteCode, _config["Registration:AdminCode"]))
             return BadRequest("A valid admin invite code is required.");
 
-        // 3. Create the new user entity
+        // 3. Create the new user entity and hash password using PasswordHasher
         var user = new User
         {
             Name = dto.Name,
             Email = dto.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             Role = role,
             EmailVerified = false
         };
+
+        var hasher = new PasswordHasher<User>();
+        user.PasswordHash = hasher.HashPassword(user, dto.Password);
 
         // 4. Save to database
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        // 5. Ask them to confirm their email (a failure here must not fail the registration)
+        // 5. Ask them to confirm their email
         try { await _mailer.SendVerificationAsync(user); }
         catch (Exception ex) { Console.WriteLine($"Verification email failed: {ex.Message}"); }
 
@@ -88,7 +89,14 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Login(LoginDto dto)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
-        if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+        if (user == null)
+            return Unauthorized("Invalid email or password.");
+
+        // Securely verify password using PasswordHasher instead of BCrypt
+        var hasher = new PasswordHasher<User>();
+        var result = hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password);
+
+        if (result == PasswordVerificationResult.Failed)
             return Unauthorized("Invalid email or password.");
 
         return Ok(new { token = _tokenService.CreateToken(user), role = user.Role });
